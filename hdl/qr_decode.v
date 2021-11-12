@@ -27,8 +27,11 @@ localparam [3:0] FIND_MASK_PATTERN = 2;
 localparam [3:0] DE_MASKING_1 = 3;
 localparam [3:0] DE_MASKING_2 = 4;
 localparam [3:0] DE_MASKING_3 = 5;
-localparam [3:0] OUTPUT = 6;
-localparam [3:0] FINISH = 7;
+localparam [3:0] CALCULATE_SYNDROME_1 = 6;
+localparam [3:0] CALCULATE_SYNDROME_2 = 7;
+localparam [3:0] ERROR_CORRECTION_1 = 8;
+localparam [3:0] OUTPUT = 9;
+localparam [3:0] FINISH = 10;
 
 wire enable;
 wire pos_rot_finish;
@@ -38,6 +41,7 @@ wire [11:0] position;
 assign enable = 1;
 
 wire [11:0] pos_rot_sram_raddr;
+
 
 detect_rotation u1(
 .clk(clk),
@@ -49,6 +53,24 @@ detect_rotation u1(
 .position(position),
 .finish(pos_rot_finish)
 );
+
+wire [7:0] log_out;
+reg [7:0] log_in;
+log u2(
+.in(log_in),
+.out(log_out)
+);
+
+wire [7:0] antilog_out;
+wire [7:0] antilog_in;
+
+antilog u3(
+.in(antilog_in),
+.out(antilog_out)
+);
+
+
+
 
 //assign sram_raddr = pos_rot_sram_raddr;
 
@@ -99,11 +121,23 @@ wire [4:0] real_y_cnt;
 
 reg [8:0] read_cnt;
 reg [8:0] read_cnt_n;
-reg [8:0] out_cnt;
-reg [8:0] out_cnt_n;
+reg [5:0] out_cnt;
+reg [5:0] out_cnt_n;
 
 wire[7:0] c [0:44];
 wire [7:0] length;
+
+reg [5:0] gf_cnt;
+reg [5:0] gf_cnt_n;
+//reg [7:0] c_gf [0:44];
+//reg [7:0] c_gf_n;
+
+
+
+
+
+
+
 assign length = {c[0][3:0],c[1][7:4]};
 
 assign real_x_cnt = (mode == 1) ? x_cnt : (mode == 2)? y_cnt : (mode == 3)? 24-x_cnt : 24-y_cnt; 
@@ -158,8 +192,113 @@ assign c[42] = {code[250], code[274], code[275], code[299], code[300], code[324]
 assign c[43] = {code[327], code[301], code[302], code[276], code[277], code[251], code[252], code[226]};
 
 
-wire [7:0] test_0 = c[6];
-wire [7:0] test_1 = c[7];
+wire [7:0] test_0 = c[42];
+wire [7:0] test_1 = c[43];
+
+//always(posedge clk)begin
+//    if(state == ERROR_CORRECTION_1)begin
+//        //for(j = 43 j > 0; j = j - 1)begin
+//            //c_gf[j] <= c_gf[j-1];
+//        //end
+//        //c_gf[0] <= c_gf_n;
+//    end
+//    else begin
+//        //for(j = 43 j >= 0; j = j - 1)begin
+//        //    c_gf[j] <= c_gf[j];
+//        //end
+//    end
+//end
+
+reg [7:0] syndrome [0:7];
+wire [7:0] tmp_s;
+
+reg [7:0] ss [0:7];
+wire [7:0] ss_n [0:1];
+add_gf ssu1 (.in1(ss[5]),.in2(8'd6),.out(ss_n[0]));
+add_gf ssu2 (.in1(ss[6]),.in2(8'd7),.out(ss_n[1]));
+
+always@(posedge clk)begin
+    if(~srstn)begin
+        ss[0] <= 0;
+        ss[1] <= 0;
+        ss[2] <= 0;
+        ss[3] <= 0;
+        ss[4] <= 0;
+        ss[5] <= 0;
+        ss[6] <= 0;
+        ss[7] <= 0;
+    end
+    else begin
+        if(state == CALCULATE_SYNDROME_1)begin
+            ss[0] <= ss[0];
+            ss[1] <= ss[1] + 1;
+            ss[2] <= ss[2] + 2;
+            ss[3] <= ss[3] + 3;
+            ss[4] <= ss[4] + 4;
+            ss[5] <= ss[5] + 5;
+            ss[6] <= ss_n[0];
+            ss[7] <= ss_n[1];
+        end
+        else begin
+            ss[0] <= ss[0];
+            ss[0] <= ss[0];
+            ss[1] <= ss[1];
+            ss[2] <= ss[2];
+            ss[3] <= ss[3];
+            ss[4] <= ss[4];
+            ss[5] <= ss[5];
+            ss[6] <= ss[6];
+        end
+    end
+end
+
+//
+//
+//add_gf add_u1(.in1(log_out),.in2(ss[0]),.out(tmp_s[0]))
+//add_gf add_u2(.in1(log_out),.in2(ss[1]),.out(tmp_s[1]))
+//add_gf add_u3(.in1(log_out),.in2(ss[2]),.out(tmp_s[2]))
+//add_gf add_u4(.in1(log_out),.in2(ss[3]),.out(tmp_s[3]))
+//add_gf add_u5(.in1(log_out),.in2(ss[4]),.out(tmp_s[4]))
+//add_gf add_u6(.in1(log_out),.in2(ss[5]),.out(tmp_s[5]))
+//add_gf add_u7(.in1(log_out),.in2(ss[6]),.out(tmp_s[6]))
+
+
+//reg [5:0]  gf_cnt_x, gf_cnt_x_n;
+reg [2:0]  gf_cnt_y, gf_cnt_y_n;
+
+
+add_gf add_u1(.in1(log_out),.in2(ss[gf_cnt_y]),.out(antilog_in));
+
+always@(posedge clk)begin
+    if(~srstn)begin
+        syndrome[0] <= 0;
+        syndrome[1] <= 0;
+        syndrome[2] <= 0;
+        syndrome[3] <= 0;
+        syndrome[4] <= 0;
+        syndrome[5] <= 0;
+        syndrome[6] <= 0;
+        syndrome[7] <= 0;
+    end
+    else begin
+        if(state == CALCULATE_SYNDROME_2)begin
+            syndrome[gf_cnt_y] <= syndrome[gf_cnt_y] ^ antilog_out;
+        end
+    end
+end
+
+always@(*)begin
+    log_in = c[gf_cnt];
+end
+
+wire [7:0] s0 = syndrome[0];
+wire [7:0] s1 = syndrome[1];
+wire [7:0] s2 = syndrome[2];
+wire [7:0] s3 = syndrome[3];
+wire [7:0] s4 = syndrome[4];
+wire [7:0] s5 = syndrome[5];
+wire [7:0] s6 = syndrome[6];
+wire [7:0] s7 = syndrome[7];
 
 
 always@(posedge clk)begin
@@ -206,6 +345,9 @@ always@(posedge clk)begin
     end
     read_cnt <= read_cnt_n;
     out_cnt <= out_cnt_n;
+    gf_cnt <= gf_cnt_n;
+    //gf_cnt_x <= gf_cnt_x_n;
+    gf_cnt_y <= gf_cnt_y_n;
 end
 
 always@(*)begin
@@ -222,6 +364,9 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
+            gf_cnt_n = 43;
+            //gf_cnt_x_n = 0;
+            gf_cnt_y_n = 0;
         end
         DETECT_POSITION_AND_ROTATION:begin
             state_n = (pos_rot_finish) ? FIND_MASK_PATTERN : DETECT_POSITION_AND_ROTATION;
@@ -234,6 +379,9 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
+            gf_cnt_n = 43;
+            //gf_cnt_x_n = 0;
+            gf_cnt_y_n = 0;
         end
         FIND_MASK_PATTERN:begin
             state_n = (mask_cnt == 2)? DE_MASKING_1 : FIND_MASK_PATTERN;
@@ -247,6 +395,9 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
+            gf_cnt_n = 43;
+           // gf_cnt_x_n = 0;
+            gf_cnt_y_n = 0;
         end
         DE_MASKING_1:begin    
             state_n = (x_cnt == 16 && y_cnt == 8)? DE_MASKING_2 :DE_MASKING_1;
@@ -267,6 +418,9 @@ always@(*)begin
             y_cnt_n = (x_cnt == 16)? y_cnt + 1 : y_cnt;
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
+            gf_cnt_n = 43;
+           // gf_cnt_x_n = 0;
+            gf_cnt_y_n = 0;
         end
         DE_MASKING_2:begin
             state_n = (x_cnt == 24 &&  y_cnt == 16)? DE_MASKING_3 : DE_MASKING_2;
@@ -287,9 +441,12 @@ always@(*)begin
             y_cnt_n = (x_cnt == 24)? y_cnt + 1 : y_cnt;
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
+            gf_cnt_n = 43;
+            //gf_cnt_x_n = 0;
+            gf_cnt_y_n = 0;
         end
         DE_MASKING_3:begin
-            state_n = (x_cnt == 24 && y_cnt == 24)? OUTPUT : DE_MASKING_3;
+            state_n = (x_cnt == 24 && y_cnt == 24)? CALCULATE_SYNDROME_2 : DE_MASKING_3;
             mask_raddr = position + 64*real_y_cnt + real_x_cnt;
             mask_cnt_n = 0;
             case(real_mask)
@@ -307,6 +464,44 @@ always@(*)begin
             y_cnt_n = (x_cnt == 24)? y_cnt + 1:y_cnt;
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
+            gf_cnt_n = 43;
+           // gf_cnt_x_n = 0;
+            gf_cnt_y_n = 0;
+        end
+        CALCULATE_SYNDROME_1:begin
+            state_n = CALCULATE_SYNDROME_2;
+            mask_raddr = 0;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n = gf_cnt - 1;
+            gf_cnt_y_n = 0;
+        end
+        CALCULATE_SYNDROME_2:begin
+            state_n = (gf_cnt_y == 7) ? (gf_cnt == 0)? FINISH :CALCULATE_SYNDROME_1: CALCULATE_SYNDROME_2;
+            mask_raddr = 0;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n =  gf_cnt;
+            gf_cnt_y_n = gf_cnt_y + 1;
+        end
+        ERROR_CORRECTION_1:begin
+            state_n = ERROR_CORRECTION_1;
+            mask_raddr = 0;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n = gf_cnt - 1;
         end
         OUTPUT:begin
             state_n = (out_cnt == length-1)? FINISH : OUTPUT;
@@ -317,6 +512,7 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = out_cnt + 1;
+            gf_cnt_n = 0;
         end
         FINISH:begin
             state_n = FINISH;
@@ -327,6 +523,7 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
+            gf_cnt_n = 0;
         end
         default:begin
             state_n = 0;
@@ -554,3 +751,585 @@ always@(*)begin
 end
 
 endmodule
+
+module add_gf(
+input [7:0] in1,
+input [7:0] in2,
+output reg [7:0] out
+);
+
+reg [8:0] tmp;
+
+always@(*)begin
+    tmp = in1 + in2;
+    if(tmp >= 255)begin
+        out = tmp[7:0] + 8'd1;
+    end
+    else begin
+        out = tmp[7:0];
+    end
+end
+endmodule
+
+
+
+module log(
+input [7:0] in,
+output reg [7:0] out
+);
+
+always@(*)begin
+    (* synthesis, parallel_case *)
+    case(in)
+        1:begin out = 0; end
+        2:begin out = 1; end
+        3:begin out = 25; end
+        4:begin out = 2; end
+        5:begin out = 50; end
+        6:begin out = 26; end
+        7:begin out = 198; end
+        8:begin out = 3; end
+        9:begin out = 223; end
+        10:begin out = 51; end
+        11:begin out = 238; end
+        12:begin out = 27; end
+        13:begin out = 104; end
+        14:begin out = 199; end
+        15:begin out = 75; end
+        16:begin out = 4; end
+        17:begin out = 100; end
+        18:begin out = 224; end
+        19:begin out = 14; end
+        20:begin out = 52; end
+        21:begin out = 141; end
+        22:begin out = 239; end
+        23:begin out = 129; end
+        24:begin out = 28; end
+        25:begin out = 193; end
+        26:begin out = 105; end
+        27:begin out = 248; end
+        28:begin out = 200; end
+        29:begin out = 8; end
+        30:begin out = 76; end
+        31:begin out = 113; end
+        32:begin out = 5; end
+        33:begin out = 138; end
+        34:begin out = 101; end
+        35:begin out = 47; end
+        36:begin out = 225; end
+        37:begin out = 36; end
+        38:begin out = 15; end
+        39:begin out = 33; end
+        40:begin out = 53; end
+        41:begin out = 147; end
+        42:begin out = 142; end
+        43:begin out = 218; end
+        44:begin out = 240; end
+        45:begin out = 18; end
+        46:begin out = 130; end
+        47:begin out = 69; end
+        48:begin out = 29; end
+        49:begin out = 181; end
+        50:begin out = 194; end
+        51:begin out = 125; end
+        52:begin out = 106; end
+        53:begin out = 39; end
+        54:begin out = 249; end
+        55:begin out = 185; end
+        56:begin out = 201; end
+        57:begin out = 154; end
+        58:begin out = 9; end
+        59:begin out = 120; end
+        60:begin out = 77; end
+        61:begin out = 228; end
+        62:begin out = 114; end
+        63:begin out = 166; end
+        64:begin out = 6; end
+        65:begin out = 191; end
+        66:begin out = 139; end
+        67:begin out = 98; end
+        68:begin out = 102; end
+        69:begin out = 221; end
+        70:begin out = 48; end
+        71:begin out = 253; end
+        72:begin out = 226; end
+        73:begin out = 152; end
+        74:begin out = 37; end
+        75:begin out = 179; end
+        76:begin out = 16; end
+        77:begin out = 145; end
+        78:begin out = 34; end
+        79:begin out = 136; end
+        80:begin out = 54; end
+        81:begin out = 208; end
+        82:begin out = 148; end
+        83:begin out = 206; end
+        84:begin out = 143; end
+        85:begin out = 150; end
+        86:begin out = 219; end
+        87:begin out = 189; end
+        88:begin out = 241; end
+        89:begin out = 210; end
+        90:begin out = 19; end
+        91:begin out = 92; end
+        92:begin out = 131; end
+        93:begin out = 56; end
+        94:begin out = 70; end
+        95:begin out = 64; end
+        96:begin out = 30; end
+        97:begin out = 66; end
+        98:begin out = 182; end
+        99:begin out = 163; end
+        100:begin out = 195; end
+        101:begin out = 72; end
+        102:begin out = 126; end
+        103:begin out = 110; end
+        104:begin out = 107; end
+        105:begin out = 58; end
+        106:begin out = 40; end
+        107:begin out = 84; end
+        108:begin out = 250; end
+        109:begin out = 133; end
+        110:begin out = 186; end
+        111:begin out = 61; end
+        112:begin out = 202; end
+        113:begin out = 94; end
+        114:begin out = 155; end
+        115:begin out = 159; end
+        116:begin out = 10; end
+        117:begin out = 21; end
+        118:begin out = 121; end
+        119:begin out = 43; end
+        120:begin out = 78; end
+        121:begin out = 212; end
+        122:begin out = 229; end
+        123:begin out = 172; end
+        124:begin out = 115; end
+        125:begin out = 243; end
+        126:begin out = 167; end
+        127:begin out = 87; end
+        128:begin out = 7; end
+        129:begin out = 112; end
+        130:begin out = 192; end
+        131:begin out = 247; end
+        132:begin out = 140; end
+        133:begin out = 128; end
+        134:begin out = 99; end
+        135:begin out = 13; end
+        136:begin out = 103; end
+        137:begin out = 74; end
+        138:begin out = 222; end
+        139:begin out = 237; end
+        140:begin out = 49; end
+        141:begin out = 197; end
+        142:begin out = 254; end
+        143:begin out = 24; end
+        144:begin out = 227; end
+        145:begin out = 165; end
+        146:begin out = 153; end
+        147:begin out = 119; end
+        148:begin out = 38; end
+        149:begin out = 184; end
+        150:begin out = 180; end
+        151:begin out = 124; end
+        152:begin out = 17; end
+        153:begin out = 68; end
+        154:begin out = 146; end
+        155:begin out = 217; end
+        156:begin out = 35; end
+        157:begin out = 32; end
+        158:begin out = 137; end
+        159:begin out = 46; end
+        160:begin out = 55; end
+        161:begin out = 63; end
+        162:begin out = 209; end
+        163:begin out = 91; end
+        164:begin out = 149; end
+        165:begin out = 188; end
+        166:begin out = 207; end
+        167:begin out = 205; end
+        168:begin out = 144; end
+        169:begin out = 135; end
+        170:begin out = 151; end
+        171:begin out = 178; end
+        172:begin out = 220; end
+        173:begin out = 252; end
+        174:begin out = 190; end
+        175:begin out = 97; end
+        176:begin out = 242; end
+        177:begin out = 86; end
+        178:begin out = 211; end
+        179:begin out = 171; end
+        180:begin out = 20; end
+        181:begin out = 42; end
+        182:begin out = 93; end
+        183:begin out = 158; end
+        184:begin out = 132; end
+        185:begin out = 60; end
+        186:begin out = 57; end
+        187:begin out = 83; end
+        188:begin out = 71; end
+        189:begin out = 109; end
+        190:begin out = 65; end
+        191:begin out = 162; end
+        192:begin out = 31; end
+        193:begin out = 45; end
+        194:begin out = 67; end
+        195:begin out = 216; end
+        196:begin out = 183; end
+        197:begin out = 123; end
+        198:begin out = 164; end
+        199:begin out = 118; end
+        200:begin out = 196; end
+        201:begin out = 23; end
+        202:begin out = 73; end
+        203:begin out = 236; end
+        204:begin out = 127; end
+        205:begin out = 12; end
+        206:begin out = 111; end
+        207:begin out = 246; end
+        208:begin out = 108; end
+        209:begin out = 161; end
+        210:begin out = 59; end
+        211:begin out = 82; end
+        212:begin out = 41; end
+        213:begin out = 157; end
+        214:begin out = 85; end
+        215:begin out = 170; end
+        216:begin out = 251; end
+        217:begin out = 96; end
+        218:begin out = 134; end
+        219:begin out = 177; end
+        220:begin out = 187; end
+        221:begin out = 204; end
+        222:begin out = 62; end
+        223:begin out = 90; end
+        224:begin out = 203; end
+        225:begin out = 89; end
+        226:begin out = 95; end
+        227:begin out = 176; end
+        228:begin out = 156; end
+        229:begin out = 169; end
+        230:begin out = 160; end
+        231:begin out = 81; end
+        232:begin out = 11; end
+        233:begin out = 245; end
+        234:begin out = 22; end
+        235:begin out = 235; end
+        236:begin out = 122; end
+        237:begin out = 117; end
+        238:begin out = 44; end
+        239:begin out = 215; end
+        240:begin out = 79; end
+        241:begin out = 174; end
+        242:begin out = 213; end
+        243:begin out = 233; end
+        244:begin out = 230; end
+        245:begin out = 231; end
+        246:begin out = 173; end
+        247:begin out = 232; end
+        248:begin out = 116; end
+        249:begin out = 214; end
+        250:begin out = 244; end
+        251:begin out = 234; end
+        252:begin out = 168; end
+        253:begin out = 80; end
+        254:begin out = 88; end
+        255:begin out = 175; end
+        default:begin
+            out = 0;
+        end
+    endcase
+end
+
+endmodule 
+
+module antilog(
+input [7:0] in,
+output reg [7:0] out
+);
+always@(*)begin
+    (* synthesis, parallel_case *)
+    case(in)
+        0:begin out = 1; end
+        1:begin out = 2; end
+        2:begin out = 4; end
+        3:begin out = 8; end
+        4:begin out = 16; end
+        5:begin out = 32; end
+        6:begin out = 64; end
+        7:begin out = 128; end
+        8:begin out = 29; end
+        9:begin out = 58; end
+        10:begin out = 116; end
+        11:begin out = 232; end
+        12:begin out = 205; end
+        13:begin out = 135; end
+        14:begin out = 19; end
+        15:begin out = 38; end
+        16:begin out = 76; end
+        17:begin out = 152; end
+        18:begin out = 45; end
+        19:begin out = 90; end
+        20:begin out = 180; end
+        21:begin out = 117; end
+        22:begin out = 234; end
+        23:begin out = 201; end
+        24:begin out = 143; end
+        25:begin out = 3; end
+        26:begin out = 6; end
+        27:begin out = 12; end
+        28:begin out = 24; end
+        29:begin out = 48; end
+        30:begin out = 96; end
+        31:begin out = 192; end
+        32:begin out = 157; end
+        33:begin out = 39; end
+        34:begin out = 78; end
+        35:begin out = 156; end
+        36:begin out = 37; end
+        37:begin out = 74; end
+        38:begin out = 148; end
+        39:begin out = 53; end
+        40:begin out = 106; end
+        41:begin out = 212; end
+        42:begin out = 181; end
+        43:begin out = 119; end
+        44:begin out = 238; end
+        45:begin out = 193; end
+        46:begin out = 159; end
+        47:begin out = 35; end
+        48:begin out = 70; end
+        49:begin out = 140; end
+        50:begin out = 5; end
+        51:begin out = 10; end
+        52:begin out = 20; end
+        53:begin out = 40; end
+        54:begin out = 80; end
+        55:begin out = 160; end
+        56:begin out = 93; end
+        57:begin out = 186; end
+        58:begin out = 105; end
+        59:begin out = 210; end
+        60:begin out = 185; end
+        61:begin out = 111; end
+        62:begin out = 222; end
+        63:begin out = 161; end
+        64:begin out = 95; end
+        65:begin out = 190; end
+        66:begin out = 97; end
+        67:begin out = 194; end
+        68:begin out = 153; end
+        69:begin out = 47; end
+        70:begin out = 94; end
+        71:begin out = 188; end
+        72:begin out = 101; end
+        73:begin out = 202; end
+        74:begin out = 137; end
+        75:begin out = 15; end
+        76:begin out = 30; end
+        77:begin out = 60; end
+        78:begin out = 120; end
+        79:begin out = 240; end
+        80:begin out = 253; end
+        81:begin out = 231; end
+        82:begin out = 211; end
+        83:begin out = 187; end
+        84:begin out = 107; end
+        85:begin out = 214; end
+        86:begin out = 177; end
+        87:begin out = 127; end
+        88:begin out = 254; end
+        89:begin out = 225; end
+        90:begin out = 223; end
+        91:begin out = 163; end
+        92:begin out = 91; end
+        93:begin out = 182; end
+        94:begin out = 113; end
+        95:begin out = 226; end
+        96:begin out = 217; end
+        97:begin out = 175; end
+        98:begin out = 67; end
+        99:begin out = 134; end
+        100:begin out = 17; end
+        101:begin out = 34; end
+        102:begin out = 68; end
+        103:begin out = 136; end
+        104:begin out = 13; end
+        105:begin out = 26; end
+        106:begin out = 52; end
+        107:begin out = 104; end
+        108:begin out = 208; end
+        109:begin out = 189; end
+        110:begin out = 103; end
+        111:begin out = 206; end
+        112:begin out = 129; end
+        113:begin out = 31; end
+        114:begin out = 62; end
+        115:begin out = 124; end
+        116:begin out = 248; end
+        117:begin out = 237; end
+        118:begin out = 199; end
+        119:begin out = 147; end
+        120:begin out = 59; end
+        121:begin out = 118; end
+        122:begin out = 236; end
+        123:begin out = 197; end
+        124:begin out = 151; end
+        125:begin out = 51; end
+        126:begin out = 102; end
+        127:begin out = 204; end
+        128:begin out = 133; end
+        129:begin out = 23; end
+        130:begin out = 46; end
+        131:begin out = 92; end
+        132:begin out = 184; end
+        133:begin out = 109; end
+        134:begin out = 218; end
+        135:begin out = 169; end
+        136:begin out = 79; end
+        137:begin out = 158; end
+        138:begin out = 33; end
+        139:begin out = 66; end
+        140:begin out = 132; end
+        141:begin out = 21; end
+        142:begin out = 42; end
+        143:begin out = 84; end
+        144:begin out = 168; end
+        145:begin out = 77; end
+        146:begin out = 154; end
+        147:begin out = 41; end
+        148:begin out = 82; end
+        149:begin out = 164; end
+        150:begin out = 85; end
+        151:begin out = 170; end
+        152:begin out = 73; end
+        153:begin out = 146; end
+        154:begin out = 57; end
+        155:begin out = 114; end
+        156:begin out = 228; end
+        157:begin out = 213; end
+        158:begin out = 183; end
+        159:begin out = 115; end
+        160:begin out = 230; end
+        161:begin out = 209; end
+        162:begin out = 191; end
+        163:begin out = 99; end
+        164:begin out = 198; end
+        165:begin out = 145; end
+        166:begin out = 63; end
+        167:begin out = 126; end
+        168:begin out = 252; end
+        169:begin out = 229; end
+        170:begin out = 215; end
+        171:begin out = 179; end
+        172:begin out = 123; end
+        173:begin out = 246; end
+        174:begin out = 241; end
+        175:begin out = 255; end
+        176:begin out = 227; end
+        177:begin out = 219; end
+        178:begin out = 171; end
+        179:begin out = 75; end
+        180:begin out = 150; end
+        181:begin out = 49; end
+        182:begin out = 98; end
+        183:begin out = 196; end
+        184:begin out = 149; end
+        185:begin out = 55; end
+        186:begin out = 110; end
+        187:begin out = 220; end
+        188:begin out = 165; end
+        189:begin out = 87; end
+        190:begin out = 174; end
+        191:begin out = 65; end
+        192:begin out = 130; end
+        193:begin out = 25; end
+        194:begin out = 50; end
+        195:begin out = 100; end
+        196:begin out = 200; end
+        197:begin out = 141; end
+        198:begin out = 7; end
+        199:begin out = 14; end
+        200:begin out = 28; end
+        201:begin out = 56; end
+        202:begin out = 112; end
+        203:begin out = 224; end
+        204:begin out = 221; end
+        205:begin out = 167; end
+        206:begin out = 83; end
+        207:begin out = 166; end
+        208:begin out = 81; end
+        209:begin out = 162; end
+        210:begin out = 89; end
+        211:begin out = 178; end
+        212:begin out = 121; end
+        213:begin out = 242; end
+        214:begin out = 249; end
+        215:begin out = 239; end
+        216:begin out = 195; end
+        217:begin out = 155; end
+        218:begin out = 43; end
+        219:begin out = 86; end
+        220:begin out = 172; end
+        221:begin out = 69; end
+        222:begin out = 138; end
+        223:begin out = 9; end
+        224:begin out = 18; end
+        225:begin out = 36; end
+        226:begin out = 72; end
+        227:begin out = 144; end
+        228:begin out = 61; end
+        229:begin out = 122; end
+        230:begin out = 244; end
+        231:begin out = 245; end
+        232:begin out = 247; end
+        233:begin out = 243; end
+        234:begin out = 251; end
+        235:begin out = 235; end
+        236:begin out = 203; end
+        237:begin out = 139; end
+        238:begin out = 11; end
+        239:begin out = 22; end
+        240:begin out = 44; end
+        241:begin out = 88; end
+        242:begin out = 176; end
+        243:begin out = 125; end
+        244:begin out = 250; end
+        245:begin out = 233; end
+        246:begin out = 207; end
+        247:begin out = 131; end
+        248:begin out = 27; end
+        249:begin out = 54; end
+        250:begin out = 108; end
+        251:begin out = 216; end
+        252:begin out = 173; end
+        253:begin out = 71; end
+        254:begin out = 142; end
+        default:begin
+            out = 0;
+        end
+    endcase
+end
+endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
