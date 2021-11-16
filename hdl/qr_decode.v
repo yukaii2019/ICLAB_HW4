@@ -29,9 +29,18 @@ localparam [3:0] DE_MASKING_2 = 4;
 localparam [3:0] DE_MASKING_3 = 5;
 localparam [3:0] CALCULATE_SYNDROME_1 = 6;
 localparam [3:0] CALCULATE_SYNDROME_2 = 7;
-localparam [3:0] ERROR_CORRECTION_1 = 8;
-localparam [3:0] OUTPUT = 9;
-localparam [3:0] FINISH = 10;
+//localparam [3:0] CALCULATE_GF_SYNDROME = 8;
+
+localparam [3:0] SOLVE_EQUATION = 8;
+localparam [3:0] FIND_ERROR_POSITION = 9;
+localparam [3:0] SOLVE_EQUATION_2 = 10;
+localparam [3:0] FIX_ERROR = 11;
+
+
+
+//localparam [3:0] ERROR_CORRECTION_1 = 10;
+localparam [3:0] OUTPUT = 12;
+localparam [3:0] FINISH = 13;
 
 wire enable;
 wire pos_rot_finish;
@@ -125,6 +134,10 @@ reg [5:0] out_cnt;
 reg [5:0] out_cnt_n;
 
 wire[7:0] c [0:44];
+reg [7:0] c_correct[0:27];
+reg [7:0] offset[0:27];
+reg [7:0] offset_n[0:27];
+
 wire [7:0] length;
 
 reg [5:0] gf_cnt;
@@ -132,13 +145,17 @@ reg [5:0] gf_cnt_n;
 //reg [7:0] c_gf [0:44];
 //reg [7:0] c_gf_n;
 
+reg[7:0] in1_sys,in2_sys,in3_sys,in4_sys,in5_sys;
+reg[7:0] in1_sys_n,in2_sys_n,in3_sys_n,in4_sys_n,in5_sys_n;
+reg start_sys;
+reg start_sys_n;
+wire finish_sys;
+wire [7:0] sigma_1, sigma_2, sigma_3, sigma_4;
 
 
 
 
-
-
-assign length = {c[0][3:0],c[1][7:4]};
+assign length = {c_correct[0][3:0],c_correct[1][7:4]};
 
 assign real_x_cnt = (mode == 1) ? x_cnt : (mode == 2)? y_cnt : (mode == 3)? 24-x_cnt : 24-y_cnt; 
 assign real_y_cnt = (mode == 1) ? y_cnt : (mode == 2)? 24-x_cnt : (mode == 3)? 24-y_cnt : x_cnt; 
@@ -192,8 +209,19 @@ assign c[42] = {code[250], code[274], code[275], code[299], code[300], code[324]
 assign c[43] = {code[327], code[301], code[302], code[276], code[277], code[251], code[252], code[226]};
 
 
-wire [7:0] test_0 = c[42];
-wire [7:0] test_1 = c[43];
+wire [7:0] test_0 = c_correct[0];
+wire [7:0] test_1 = c_correct[1];
+
+integer k;
+always@(*)begin
+    for(k = 0 ; k < 28 ; k = k + 1)begin
+        c_correct[k] = c[k] ^ offset[k];
+    end
+end
+
+
+
+
 
 //always(posedge clk)begin
 //    if(state == ERROR_CORRECTION_1)begin
@@ -214,8 +242,8 @@ wire [7:0] tmp_s;
 
 reg [7:0] ss [0:7];
 wire [7:0] ss_n [0:1];
-add_gf ssu1 (.in1(ss[5]),.in2(8'd6),.out(ss_n[0]));
-add_gf ssu2 (.in1(ss[6]),.in2(8'd7),.out(ss_n[1]));
+add_gf ssu1 (.in1(ss[6]),.in2(8'd6),.out(ss_n[0]));
+add_gf ssu2 (.in1(ss[7]),.in2(8'd7),.out(ss_n[1]));
 
 always@(posedge clk)begin
     if(~srstn)begin
@@ -241,13 +269,13 @@ always@(posedge clk)begin
         end
         else begin
             ss[0] <= ss[0];
-            ss[0] <= ss[0];
             ss[1] <= ss[1];
             ss[2] <= ss[2];
             ss[3] <= ss[3];
             ss[4] <= ss[4];
             ss[5] <= ss[5];
             ss[6] <= ss[6];
+            ss[7] <= ss[7];
         end
     end
 end
@@ -265,7 +293,7 @@ end
 
 //reg [5:0]  gf_cnt_x, gf_cnt_x_n;
 reg [2:0]  gf_cnt_y, gf_cnt_y_n;
-
+//reg [2:0] sd_cnt, sd_cnt_n;
 
 add_gf add_u1(.in1(log_out),.in2(ss[gf_cnt_y]),.out(antilog_in));
 
@@ -288,7 +316,291 @@ always@(posedge clk)begin
 end
 
 always@(*)begin
-    log_in = c[gf_cnt];
+    //case(state)
+        //CALCULATE_SYNDROME_2:begin
+            log_in = c[gf_cnt];
+        //end
+        //CALCULATE_GF_SYNDROME:begin
+        //    log_in = syndrome[sd_cnt];
+        //end
+        //SOLVE_EQUATION_1:begin
+        //    log_in = aa;
+        //end
+        //default:begin
+        //    log_in = 0;
+        //end
+    //endcase
+end
+
+wire enable_err_pos;
+assign enable_err_pos = finish_sys;
+wire [7:0] i1, i2,i3,i4;
+wire finish_err_pos;
+
+
+reg [7:0] i1_tmp, i2_tmp,i3_tmp,i4_tmp;
+wire [7:0] i1_anti, i2_anti,i3_anti,i4_anti;
+reg [7:0] i2_anti_delay1;
+reg [7:0] i3_anti_delay1, i3_anti_delay2;
+reg [7:0] i4_anti_delay1, i4_anti_delay2, i4_anti_delay3;
+
+antilog aa1 (.in(i1_tmp),.out(i1_anti));
+antilog aa2 (.in(i2_tmp),.out(i2_anti));
+antilog aa3 (.in(i3_tmp),.out(i3_anti));
+antilog aa4 (.in(i4_tmp),.out(i4_anti));
+
+error_position epu1(
+.sigma_1(sigma_1),
+.sigma_2(sigma_2),
+.sigma_3(sigma_3),
+.sigma_4(sigma_4),
+.clk(clk),
+.srstn(srstn),
+.enable(enable_err_pos),
+
+.i1(i1),
+.i2(i2),
+.i3(i3),
+.i4(i4),
+.finish(finish_err_pos)
+);
+
+always@(posedge clk)begin
+    i2_anti_delay1 <= i2_anti;
+    i3_anti_delay1 <= i3_anti;
+    i3_anti_delay2 <= i3_anti_delay1;
+    i4_anti_delay1 <= i4_anti;
+    i4_anti_delay2 <= i4_anti_delay1;
+    i4_anti_delay3 <= i4_anti_delay2;
+end
+
+always@(posedge clk)begin
+    if(state == SOLVE_EQUATION_2)begin
+        i1_tmp <= i1_tmp + i1;
+        i2_tmp <= i2_tmp + i2;
+        i3_tmp <= i3_tmp + i3;
+        i4_tmp <= i4_tmp + i4;
+    end
+    else begin
+        i1_tmp <= i1;
+        i2_tmp <= i2;
+        i3_tmp <= i3;
+        i4_tmp <= i4;
+    end
+end
+
+
+reg [1:0] fix_error_cnt;
+reg [1:0] fix_error_cnt_n;
+reg [7:0] anti_in_fix_error;
+wire [7:0] anti_out_fix_error;
+
+antilog aaa (.in(anti_in_fix_error),.out(anti_out_fix_error));
+
+integer n;
+
+always@(posedge clk)begin
+    if(~srstn)begin
+        for( n = 0 ; n < 28 ; n = n +1)begin
+            offset[n] <= 0;
+        end
+    end
+    else begin
+        for( n = 0 ; n < 28 ; n = n +1)begin
+            offset[n] <= offset_n[n];
+        end
+    end
+end
+
+always@(posedge clk)begin
+    fix_error_cnt <= fix_error_cnt_n;
+end
+
+integer m;
+always@(*)begin
+    if(state == FIX_ERROR)begin
+        fix_error_cnt_n = fix_error_cnt + 1;
+        for ( m = 0 ; m < 28 ; m = m +1)begin
+            offset_n[m] = offset[m];
+        end
+
+        case(fix_error_cnt)
+            0:begin
+                anti_in_fix_error = ({1'b0, sigma_4} + {1'b0, i1} >= 255)? sigma_4+i1 +1 : sigma_4 + i1;
+                offset_n[43-i1] =  anti_out_fix_error;
+            end
+            1:begin
+                anti_in_fix_error = ({1'b0, sigma_3} + {1'b0, i2} >= 255)? sigma_3+i2 +1 : sigma_3 + i2;
+                offset_n[43-i2] =  anti_out_fix_error;
+            end
+            2:begin
+                anti_in_fix_error = ({1'b0, sigma_2} + {1'b0, i3} >= 255)? sigma_2+i3 +1 : sigma_2 + i3;
+                offset_n[43-i3] =  anti_out_fix_error;
+            end
+            3:begin
+                anti_in_fix_error = ({1'b0, sigma_1} + {1'b0, i4} >= 255)? sigma_1+i4 +1 : sigma_1 + i4;
+                offset_n[43-i4] =  anti_out_fix_error;
+            end
+            default:begin
+                anti_in_fix_error = 0;
+            end
+        endcase
+    end
+    else begin
+        fix_error_cnt_n = 0;
+        anti_in_fix_error = 0 ;
+        for ( m = 0 ; m < 28 ; m = m +1)begin
+            offset_n[m] = offset[m];
+        end
+
+    end
+end
+
+wire [7:0] test_c9  = c[9];
+wire [7:0] test_c10  = c[10];
+wire [7:0] test_c11  = c[11];
+wire [7:0] test_c12  = c[12];
+
+
+
+
+
+reg [2:0] sys_cnt;
+reg [2:0] sys_cnt_n;
+
+systolic sys1(
+.in1(in1_sys),
+.in2(in2_sys),
+.in3(in3_sys),
+.in4(in4_sys),
+.in5(in5_sys),
+.clk(clk),
+.srstn(srstn),
+.start(start_sys),
+
+.sigma_1(sigma_1),
+.sigma_2(sigma_2),
+.sigma_3(sigma_3),
+.sigma_4(sigma_4),
+.finish(finish_sys)
+
+);
+
+always@(posedge clk)begin
+    in1_sys <= in1_sys_n;
+    in2_sys <= in2_sys_n;
+    in3_sys <= in3_sys_n;
+    in4_sys <= in4_sys_n;
+    in5_sys <= in5_sys_n;
+    start_sys <= start_sys_n;
+    sys_cnt <= sys_cnt_n;
+end
+always@(*)begin
+    if(state == SOLVE_EQUATION)begin
+        sys_cnt_n = sys_cnt + 1;
+        start_sys_n = 1;
+        case(sys_cnt)
+            0:begin
+                in1_sys_n = syndrome[0];
+                in2_sys_n = 0;
+                in3_sys_n = 0;
+                in4_sys_n = 0;
+                in5_sys_n = 0;
+            end
+            1:begin
+                in1_sys_n = syndrome[1];
+                in2_sys_n = syndrome[1];
+                in3_sys_n = 0;
+                in4_sys_n = 0;
+                in5_sys_n = 0;
+            end
+            2:begin
+                in1_sys_n = syndrome[2];
+                in2_sys_n = syndrome[2];
+                in3_sys_n = syndrome[2];
+                in4_sys_n = 0;
+                in5_sys_n = 0;
+            end
+            3:begin
+                in1_sys_n = syndrome[3];
+                in2_sys_n = syndrome[3];
+                in3_sys_n = syndrome[3];
+                in4_sys_n = syndrome[3];
+                in5_sys_n = 0;
+            end
+            4:begin
+                in1_sys_n = 0;
+                in2_sys_n = syndrome[4];
+                in3_sys_n = syndrome[4];
+                in4_sys_n = syndrome[4];
+                in5_sys_n = syndrome[4];
+            end
+            5:begin
+                in1_sys_n = 0;
+                in2_sys_n = 0;
+                in3_sys_n = syndrome[5];
+                in4_sys_n = syndrome[5];
+                in5_sys_n = syndrome[5];
+            end
+            6:begin
+                in1_sys_n = 0;
+                in2_sys_n = 0;
+                in3_sys_n = 0;
+                in4_sys_n = syndrome[6];
+                in5_sys_n = syndrome[6];
+            end
+            7:begin
+                in1_sys_n = 0;
+                in2_sys_n = 0;
+                in3_sys_n = 0;
+                in4_sys_n = 0;
+                in5_sys_n = syndrome[7];
+            end
+            default : begin
+                in1_sys_n = 0;
+                in2_sys_n = 0;
+                in3_sys_n = 0;
+                in4_sys_n = 0;
+                in5_sys_n = 0;            
+            end
+        endcase
+    end
+    else if (state == SOLVE_EQUATION_2) begin
+        sys_cnt_n = sys_cnt + 1;
+        start_sys_n = 1;
+        in1_sys_n = i1_anti;
+        in2_sys_n = i2_anti_delay1;
+        in3_sys_n = i3_anti_delay2;
+        in4_sys_n = i4_anti_delay3;
+    
+        case(sys_cnt)
+            4:begin
+                in5_sys_n = syndrome[0];
+            end
+            5:begin
+                in5_sys_n = syndrome[1];
+            end
+            6:begin
+                in5_sys_n = syndrome[2];
+            end
+            7:begin
+                in5_sys_n = syndrome[3];
+            end
+            default:begin
+                in5_sys_n = 0;
+            end
+        endcase
+
+    end
+    else begin
+        sys_cnt_n = 0;
+        in1_sys_n = 0;
+        in2_sys_n = 0;
+        in3_sys_n = 0;
+        in4_sys_n = 0;
+        in5_sys_n = 0;    
+        start_sys_n = 0;
+    end
 end
 
 wire [7:0] s0 = syndrome[0];
@@ -299,6 +611,36 @@ wire [7:0] s4 = syndrome[4];
 wire [7:0] s5 = syndrome[5];
 wire [7:0] s6 = syndrome[6];
 wire [7:0] s7 = syndrome[7];
+
+
+
+
+
+
+//reg [7:0] gf_syndrome[0:7];
+//reg [7:0] step_2_coefficient[0:11];
+
+
+//always@(posedge clk)begin
+//    gf_syndrome[0] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[1] : gf_syndrome[0];   
+//    gf_syndrome[1] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[2] : gf_syndrome[1];   
+//    gf_syndrome[2] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[3] : gf_syndrome[2];   
+//    gf_syndrome[3] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[4] : gf_syndrome[3];   
+//    gf_syndrome[4] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[5] : gf_syndrome[4];   
+//    gf_syndrome[5] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[6] : gf_syndrome[5];   
+//    gf_syndrome[6] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[7] : gf_syndrome[6];   
+//    gf_syndrome[7] <= (state == CALCULATE_GF_SYNDROME)? log_out : gf_syndrome[7];   
+//end
+//wire[7:0] eq_diff1;
+//wire[7:0] eq_diff2;
+//wire[7:0] eq_diff3;
+
+//assign eq_diff1 = (gf_syndrome[0] > gf_syndrome[1])? gf_syndrome[0] - gf syndrome[1]: gf_syndrome[1] - gf syndrome[0];
+//assign eq_diff2 = (gf_syndrome[1] > gf_syndrome[2])? gf_syndrome[1] - gf syndrome[2]: gf_syndrome[2] - gf syndrome[1];
+//assign eq_diff3 = (gf_syndrome[2] > gf_syndrome[3])? gf_syndrome[2] - gf syndrome[3]: gf_syndrome[3] - gf syndrome[2];
+
+//wire[7:0] a1 = (gf_syndrome[0] < gf_syndrome[1])? gf_syndrome[0] : gf_syndrome[1]; 
+
 
 
 always@(posedge clk)begin
@@ -348,6 +690,7 @@ always@(posedge clk)begin
     gf_cnt <= gf_cnt_n;
     //gf_cnt_x <= gf_cnt_x_n;
     gf_cnt_y <= gf_cnt_y_n;
+    //sd_cnt <= sd_cnt_n;
 end
 
 always@(*)begin
@@ -367,6 +710,7 @@ always@(*)begin
             gf_cnt_n = 43;
             //gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
+            //sd_cnt_n = 0;
         end
         DETECT_POSITION_AND_ROTATION:begin
             state_n = (pos_rot_finish) ? FIND_MASK_PATTERN : DETECT_POSITION_AND_ROTATION;
@@ -382,6 +726,7 @@ always@(*)begin
             gf_cnt_n = 43;
             //gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
+            //sd_cnt_n = 0;
         end
         FIND_MASK_PATTERN:begin
             state_n = (mask_cnt == 2)? DE_MASKING_1 : FIND_MASK_PATTERN;
@@ -398,6 +743,7 @@ always@(*)begin
             gf_cnt_n = 43;
            // gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
+            //sd_cnt_n = 0;
         end
         DE_MASKING_1:begin    
             state_n = (x_cnt == 16 && y_cnt == 8)? DE_MASKING_2 :DE_MASKING_1;
@@ -421,6 +767,7 @@ always@(*)begin
             gf_cnt_n = 43;
            // gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
+            //sd_cnt_n = 0;
         end
         DE_MASKING_2:begin
             state_n = (x_cnt == 24 &&  y_cnt == 16)? DE_MASKING_3 : DE_MASKING_2;
@@ -444,6 +791,7 @@ always@(*)begin
             gf_cnt_n = 43;
             //gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
+            //sd_cnt_n = 0;
         end
         DE_MASKING_3:begin
             state_n = (x_cnt == 24 && y_cnt == 24)? CALCULATE_SYNDROME_2 : DE_MASKING_3;
@@ -467,6 +815,7 @@ always@(*)begin
             gf_cnt_n = 43;
            // gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
+            //sd_cnt_n = 0;
         end
         CALCULATE_SYNDROME_1:begin
             state_n = CALCULATE_SYNDROME_2;
@@ -479,9 +828,10 @@ always@(*)begin
             out_cnt_n = 0;
             gf_cnt_n = gf_cnt - 1;
             gf_cnt_y_n = 0;
+            //sd_cnt_n = 0;
         end
         CALCULATE_SYNDROME_2:begin
-            state_n = (gf_cnt_y == 7) ? (gf_cnt == 0)? FINISH :CALCULATE_SYNDROME_1: CALCULATE_SYNDROME_2;
+            state_n = (gf_cnt_y == 7) ? (gf_cnt == 0)? SOLVE_EQUATION :CALCULATE_SYNDROME_1: CALCULATE_SYNDROME_2;
             mask_raddr = 0;
             mask_cnt_n = 0;
             code_n = 0;
@@ -491,9 +841,10 @@ always@(*)begin
             out_cnt_n = 0;
             gf_cnt_n =  gf_cnt;
             gf_cnt_y_n = gf_cnt_y + 1;
+            //sd_cnt_n = 0;
         end
-        ERROR_CORRECTION_1:begin
-            state_n = ERROR_CORRECTION_1;
+        SOLVE_EQUATION:begin
+            state_n = (finish_sys == 1)? FIND_ERROR_POSITION : SOLVE_EQUATION;
             mask_raddr = 0;
             mask_cnt_n = 0;
             code_n = 0;
@@ -501,7 +852,44 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
-            gf_cnt_n = gf_cnt - 1;
+            gf_cnt_n =  0;
+            gf_cnt_y_n = 0;
+        end
+        FIND_ERROR_POSITION:begin
+            state_n = (finish_err_pos)? SOLVE_EQUATION_2 : FIND_ERROR_POSITION;
+            mask_raddr = 0;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n =  0;
+            gf_cnt_y_n = 0;
+        end
+        SOLVE_EQUATION_2:begin
+            state_n = (finish_sys)? FIX_ERROR : SOLVE_EQUATION_2;
+            mask_raddr = 0;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n =  0;
+            gf_cnt_y_n = 0;
+        end
+        FIX_ERROR : begin
+            state_n = (fix_error_cnt == 3)? OUTPUT : FIX_ERROR;
+            mask_raddr = 0;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n =  0;
+            gf_cnt_y_n = 0;    
         end
         OUTPUT:begin
             state_n = (out_cnt == length-1)? FINISH : OUTPUT;
@@ -532,12 +920,15 @@ always@(*)begin
             code_n = 0;
             x_cnt_n = 0;
             y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n = 0;
         end
     endcase
 end
 
 always@(*)begin
-    decode_jis8_code_n = {c[out_cnt+1][3:0],c[out_cnt+2][7:4]};
+    decode_jis8_code_n = {c_correct[out_cnt+1][3:0],c_correct[out_cnt+2][7:4]};
     decode_valid_n = (state == OUTPUT)?1:0;
     qr_decode_finish_n = (state == FINISH)?1:0;
 end
@@ -557,6 +948,161 @@ end
 
 endmodule
 
+
+
+
+
+//module solve_equation(
+//input [7:0] s0,
+//input [7:0] s1,
+//input [7:0] s2,
+//input [7:0] s3,
+//input [7:0] s4,
+//input [7:0] s5,
+//input [7:0] s6,
+//input [7:0] s7,
+//input [7:0] origin_num,
+//input enable,
+//input clk,
+//input srstn,
+//
+//output [7:0] out1,
+//output [7:0] out2,
+//output [7:0] out3,
+//output reg  [7:0] gf_num,
+//output finish
+//);
+//
+//localparam [3:0] IDLE = 0;
+//localparam [3:0] COMPARE = 1;
+//localparam [3:0] INCREAS_BY_DIFF = 2;
+//
+//reg [3:0]state, state_n;
+//reg [7:0] diff;
+//
+//reg [7:0] num1, num2;
+//reg [7:0] num1_n, num2_n;
+//
+//reg [7:0]in1;
+//reg [1:0] cnt_x;
+//
+//reg [7:0] a ,b;
+//reg [1:0] row;
+//
+//wire [7:0] result;
+//
+//reg [7:0] 
+//
+//assign result = num1 ^ num2;
+//
+//always@(*)begin
+//    case(row)
+//        0: begin 
+//            case(cnt_x)
+//                0: a = s1;
+//                1: a = s2;
+//                2: a = s3;
+//                3: a = s4;
+//                default: a = 0;
+//            endcase
+//        end
+//        1: begin 
+//            case(cnt_x)
+//                0: a = s2;
+//                1: a = s3;
+//                2: a = s4;
+//                3: a = s5;
+//                default : a = 0;
+//            endcase 
+//        end
+//        2: begin
+//            case(cnt_x)
+//                0: a = s3;
+//                1: a = s4;
+//                2: a = s5;
+//                3: a = s6;
+//            default : a = 0;
+//        end
+//        3: begin
+//            case(cnt_x)
+//                0: a = s4;
+//                1: a = s5;
+//                2: a = s6;
+//                3: a = s7;
+//            default : a = 0;
+//        end
+//        default:begin 
+//            a = 0;
+//        end
+//    endcase
+//end
+//
+//wire cmp1, cmp2, cmp3;
+//assign cmp1 = (s0>s1)? 1 : 0;
+//assign cmp2 = (s0>s2)? 1 : 0;
+//assign cmp3 = (s0>s3)? 1 : 0;
+//
+//
+//add_gf(.in1(in1),.in2(diff),out,(b));
+//
+//always@(*)begin
+//    case(state)
+//        IDLE:begin
+//            state_n = (enable)? COMPARE : IDLE;
+//            row = 0;
+//            diff = 0;
+//            in1 = 0;
+//            gf_num = 0;
+//            num1_n = 0;
+//            num2_n = 0;
+//            cnt_x_n = 0;
+//        end
+//        COMPARE:begin
+//
+//            if(s0>s1)begin
+//                state_n = 
+//                
+//                row = 1;
+//                diff = s0-s1;
+//                in1 = a;
+//                gf_num = b;
+//                num1_n = origin_num;
+//                num2_n = num2;
+//            end
+//            else begin
+//                state_n = 
+//
+//                row = 0;
+//                diff = s1 - s0;
+//                in1 = a;
+//                gf_num = b;
+//                num1_n = num1;
+//                num2_n = origin_num;
+//
+//            end
+//        end
+//    
+//    endcase
+//end
+//
+//
+//always@(posedge clk)begin
+//    if(~srstn)begin
+//        state <= IDLE;
+//    end
+//    else begin
+//        state <= state_n;
+//    end
+//end
+//
+//always@(posedge clk)begin
+//    num1 <= num1_n;
+//    num2 <= num2_n;
+//end
+//
+//
+//
+//endmodule
 
 module detect_rotation(
 input clk,
@@ -751,6 +1297,317 @@ always@(*)begin
 end
 
 endmodule
+module systolic(
+input [7:0] in1,
+input [7:0] in2,
+input [7:0] in3,
+input [7:0] in4,
+input [7:0] in5,
+input clk,
+input start,
+input srstn,
+
+output reg [7:0] sigma_1,
+output reg [7:0] sigma_2,
+output reg [7:0] sigma_3,
+output reg [7:0] sigma_4,
+output reg finish
+
+);
+wire finish_n;
+
+wire[7:0] w_p11_p12; 
+wire[7:0] w_p12_p13; 
+wire[7:0] w_p13_p14; 
+wire[7:0] w_p14_p15; 
+wire[7:0] w_p15_p16; 
+
+wire[7:0] w_p21_p22;
+wire[7:0] w_p22_p23;
+wire[7:0] w_p23_p24;
+wire[7:0] w_p24_p25;
+
+wire[7:0] w_p31_p32;
+wire[7:0] w_p32_p33;
+wire[7:0] w_p33_p34;
+
+wire[7:0] w_p41_p42;
+wire[7:0] w_p42_p43;
+
+wire s_p11_p12;
+wire s_p12_p13;
+wire s_p13_p14;
+wire s_p14_p15;
+wire s_p15_p16;
+
+wire s_p21_p22;
+wire s_p22_p23;
+wire s_p23_p24;
+wire s_p24_p25;
+
+wire s_p31_p32;
+wire s_p32_p33;
+wire s_p33_p34;
+
+wire s_p41_p42;
+wire s_p42_p43;
+
+wire[7:0] w_p12_p21;
+wire[7:0] w_p13_p22;
+wire[7:0] w_p14_p23;
+wire[7:0] w_p15_p24;
+
+wire[7:0] w_p22_p31; 
+wire[7:0] w_p23_p32; 
+wire[7:0] w_p24_p33; 
+
+wire[7:0] w_p32_p41; 
+wire[7:0] w_p33_p42; 
+
+wire[7:0] w_p42_p51; 
+
+wire[7:0] in_g_p11;
+wire[7:0] in_g_p12;
+wire[7:0] in_g_p13;
+wire[7:0] in_g_p14;
+wire[7:0] in_g_p15;
+
+wire[7:0] in_g_p21;
+wire[7:0] in_g_p22;
+wire[7:0] in_g_p23;
+wire[7:0] in_g_p24;
+
+wire[7:0] in_g_p31;
+wire[7:0] in_g_p32;
+wire[7:0] in_g_p33;
+
+wire[7:0] in_g_p41;
+wire[7:0] in_g_p42;
+
+circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
+rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21),.in_g(in_g_p12));
+rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22),.in_g(in_g_p13));
+rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23),.in_g(in_g_p14));
+rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24),.in_g(in_g_p15));
+
+circle p21 (.clk(clk),.in(w_p12_p21),.out(w_p21_p22),.sign(s_p21_p22),.in_g(in_g_p21));
+rect   p22 (.clk(clk),.in(w_p13_p22),.in_c(w_p21_p22),.in_sign(s_p21_p22),.out_c(w_p22_p23),.out_sign(s_p22_p23),.out(w_p22_p31),.in_g(in_g_p22));
+rect   p23 (.clk(clk),.in(w_p14_p23),.in_c(w_p22_p23),.in_sign(s_p22_p23),.out_c(w_p23_p24),.out_sign(s_p23_p24),.out(w_p23_p32),.in_g(in_g_p23));
+rect   p24 (.clk(clk),.in(w_p15_p24),.in_c(w_p23_p24),.in_sign(s_p23_p24),.out_c(w_p24_p25),.out_sign(s_p24_p25),.out(w_p24_p33),.in_g(in_g_p24));
+
+circle p31 (.clk(clk),.in(w_p22_p31),.out(w_p31_p32),.sign(s_p31_p32),.in_g(in_g_p31));
+rect   p32 (.clk(clk),.in(w_p23_p32),.in_c(w_p31_p32),.in_sign(s_p31_p32),.out_c(w_p32_p33),.out_sign(s_p32_p33),.out(w_p32_p41),.in_g(in_g_p32));
+rect   p33 (.clk(clk),.in(w_p24_p33),.in_c(w_p32_p33),.in_sign(s_p32_p33),.out_c(w_p33_p34),.out_sign(s_p33_p34),.out(w_p33_p42),.in_g(in_g_p33));
+
+
+circle p41 (.clk(clk),.in(w_p32_p41),.out(w_p41_p42),.sign(s_p41_p42),.in_g(in_g_p41));
+rect   p42 (.clk(clk),.in(w_p33_p42),.in_c(w_p41_p42),.in_sign(s_p41_p42),.out_c(w_p42_p43),.out_sign(s_p42_p43),.out(w_p42_p51),.in_g(in_g_p42));
+
+reg [4:0] cnt;
+
+always@(posedge clk)begin
+    if(~srstn)begin
+        cnt <= 0;
+    end
+    else begin
+        if(start)begin
+            cnt <= cnt + 1;
+        end
+        else begin
+            cnt <= 0;
+        end
+
+    end
+end
+
+reg [7:0] sigma_1_n, sigma_2_n, sigma_3_n, sigma_4_n;
+
+
+
+reg [7:0] in_g_p41_delay1;
+
+reg [7:0] in_g_p32_delay1;
+reg [7:0] in_g_p32_delay2;
+reg [7:0] w_p24_p33_delay1;
+reg [7:0] in_g_p31_delay1;
+reg [7:0] in_g_p31_delay2;
+reg [7:0] in_g_p31_delay3;
+
+reg [7:0] log_u1_in;
+wire [7:0] log_u1_out;
+reg [7:0] anti_u1_in;
+wire [7:0] anti_u1_out;
+
+log logu1(.in(log_u1_in),.out(log_u1_out));
+antilog antiu1(.in(anti_u1_in),.out(anti_u1_out));
+
+reg [7:0] log_u2_in;
+wire [7:0] log_u2_out;
+reg [7:0] anti_u2_in;
+wire [7:0] anti_u2_out;
+reg [7:0] anti_u3_in;
+wire [7:0] anti_u3_out;
+
+log logu2(.in(log_u2_in),.out(log_u2_out));
+antilog antiu2(.in(anti_u2_in),.out(anti_u2_out));
+antilog antiu3(.in(anti_u3_in),.out(anti_u3_out));
+
+reg [7:0] w_p15_p24_delay1;
+reg [7:0] w_p15_p24_delay2;
+reg [7:0] in_g_p23_delay1;
+reg [7:0] in_g_p23_delay2;
+reg [7:0] in_g_p23_delay3;
+reg [7:0] in_g_p22_delay1;
+reg [7:0] in_g_p22_delay2;
+reg [7:0] in_g_p22_delay3;
+reg [7:0] in_g_p22_delay4;
+reg [7:0] in_g_p21_delay1;
+reg [7:0] in_g_p21_delay2;
+reg [7:0] in_g_p21_delay3;
+reg [7:0] in_g_p21_delay4;
+reg [7:0] in_g_p21_delay5;
+
+
+reg [7:0] log_u3_in;
+wire [7:0] log_u3_out;
+reg [7:0] anti_u4_in;
+wire [7:0] anti_u4_out;
+reg [7:0] anti_u5_in;
+wire [7:0] anti_u5_out;
+reg [7:0] anti_u6_in;
+wire [7:0] anti_u6_out;
+
+log logu3(.in(log_u3_in),.out(log_u3_out));
+antilog antiu4(.in(anti_u4_in),.out(anti_u4_out));
+antilog antiu5(.in(anti_u5_in),.out(anti_u5_out));
+antilog antiu6(.in(anti_u6_in),.out(anti_u6_out));
+
+
+reg [7:0] in5_delay1;
+reg [7:0] in5_delay2;
+reg [7:0] in5_delay3;
+reg [7:0] in_g_p14_delay1;
+reg [7:0] in_g_p14_delay2;
+reg [7:0] in_g_p14_delay3;
+reg [7:0] in_g_p14_delay4;
+reg [7:0] in_g_p13_delay1;
+reg [7:0] in_g_p13_delay2;
+reg [7:0] in_g_p13_delay3;
+reg [7:0] in_g_p13_delay4;
+reg [7:0] in_g_p13_delay5;
+reg [7:0] in_g_p12_delay1;
+reg [7:0] in_g_p12_delay2;
+reg [7:0] in_g_p12_delay3;
+reg [7:0] in_g_p12_delay4;
+reg [7:0] in_g_p12_delay5;
+reg [7:0] in_g_p12_delay6;
+reg [7:0] in_g_p11_delay1;
+reg [7:0] in_g_p11_delay2;
+reg [7:0] in_g_p11_delay3;
+reg [7:0] in_g_p11_delay4;
+reg [7:0] in_g_p11_delay5;
+reg [7:0] in_g_p11_delay6;
+reg [7:0] in_g_p11_delay7;
+
+
+
+//wire [7:0] in5_delay1_n;
+//assign in5_delay1_n = in5;
+
+
+always@(posedge clk)begin
+    in_g_p41_delay1 <= in_g_p41;
+    
+    in_g_p32_delay1 <= in_g_p32;
+    in_g_p32_delay2 <= in_g_p32_delay1;
+    w_p24_p33_delay1 <= w_p24_p33;
+    in_g_p31_delay1 <= in_g_p31;
+    in_g_p31_delay2 <= in_g_p31_delay1;
+    in_g_p31_delay3 <= in_g_p31_delay2;
+
+    w_p15_p24_delay1 <= w_p15_p24;
+    w_p15_p24_delay2 <= w_p15_p24_delay1;
+    in_g_p23_delay1 <= in_g_p23;
+    in_g_p23_delay2 <= in_g_p23_delay1;
+    in_g_p23_delay3 <= in_g_p23_delay2;
+    in_g_p22_delay1 <= in_g_p22;
+    in_g_p22_delay2 <= in_g_p22_delay1;
+    in_g_p22_delay3 <= in_g_p22_delay2;
+    in_g_p22_delay4 <= in_g_p22_delay3;
+    in_g_p21_delay1 <= in_g_p21;
+    in_g_p21_delay2 <= in_g_p21_delay1;
+    in_g_p21_delay3 <= in_g_p21_delay2;
+    in_g_p21_delay4 <= in_g_p21_delay3;
+    in_g_p21_delay5 <= in_g_p21_delay4;
+
+   // in5_delay1 <= in5;
+    in5_delay1 <= in5;
+    in5_delay2 <= in5_delay1;
+    in5_delay3 <= in5_delay2;
+    in_g_p14_delay1 <= in_g_p14;
+    in_g_p14_delay2 <= in_g_p14_delay1;
+    in_g_p14_delay3 <= in_g_p14_delay2;
+    in_g_p14_delay4 <= in_g_p14_delay3;
+    in_g_p13_delay1 <= in_g_p13;
+    in_g_p13_delay2 <= in_g_p13_delay1;
+    in_g_p13_delay3 <= in_g_p13_delay2;
+    in_g_p13_delay4 <= in_g_p13_delay3;
+    in_g_p13_delay5 <= in_g_p13_delay4;
+    in_g_p12_delay1 <= in_g_p12;
+    in_g_p12_delay2 <= in_g_p12_delay1;
+    in_g_p12_delay3 <= in_g_p12_delay2;
+    in_g_p12_delay4 <= in_g_p12_delay3;
+    in_g_p12_delay5 <= in_g_p12_delay4;
+    in_g_p12_delay6 <= in_g_p12_delay5;
+    in_g_p11_delay1 <= in_g_p11;
+    in_g_p11_delay2 <= in_g_p11_delay1;
+    in_g_p11_delay3 <= in_g_p11_delay2;
+    in_g_p11_delay4 <= in_g_p11_delay3;
+    in_g_p11_delay5 <= in_g_p11_delay4;
+    in_g_p11_delay6 <= in_g_p11_delay5;
+    in_g_p11_delay7 <= in_g_p11_delay6;
+
+end
+
+always@(posedge clk)begin
+    sigma_1 <= sigma_1_n;
+    sigma_2 <= sigma_2_n;
+    sigma_3 <= sigma_3_n;
+    sigma_4 <= sigma_4_n;
+    finish <= finish_n;
+end
+
+always@(*)begin
+    sigma_1_n = (cnt == 7)? (in_g_p42 >= in_g_p41_delay1)? in_g_p42 - in_g_p41_delay1 : in_g_p42 - in_g_p41_delay1 - 1 : sigma_1;
+end
+
+always@(*)begin
+    anti_u1_in = ({1'b0,sigma_1} + {1'b0,in_g_p32_delay2} >= 255)? sigma_1 + in_g_p32_delay2 + 1 : sigma_1 + in_g_p32_delay2;
+    log_u1_in = anti_u1_out ^ w_p24_p33_delay1;
+    sigma_2_n = (cnt == 8)? (log_u1_out >= in_g_p31_delay3)? log_u1_out - in_g_p31_delay3 : log_u1_out - in_g_p31_delay3-1 : sigma_2;
+end
+
+always@(*)begin
+    anti_u2_in = ({1'b0,sigma_1} + {1'b0,in_g_p23_delay3} >= 255)? sigma_1 + in_g_p23_delay3 + 1 : sigma_1 + in_g_p23_delay3;
+    anti_u3_in = ({1'b0,sigma_2} + {1'b0,in_g_p22_delay4} >= 255)? sigma_2 + in_g_p22_delay4 + 1 : sigma_2 + in_g_p22_delay4;
+    log_u2_in = anti_u2_out ^ anti_u3_out ^ w_p15_p24_delay2;
+    sigma_3_n = (cnt == 9)? (log_u2_out >= in_g_p21_delay5)? log_u2_out - in_g_p21_delay5 : log_u2_out - in_g_p21_delay5-1 : sigma_3;
+end
+
+always@(*)begin
+    anti_u4_in = ({1'b0,sigma_1} + {1'b0,in_g_p14_delay4} >= 255)? sigma_1 + in_g_p14_delay4 + 1 : sigma_1 + in_g_p14_delay4;
+    anti_u5_in = ({1'b0,sigma_2} + {1'b0,in_g_p13_delay5} >= 255)? sigma_2 + in_g_p13_delay5 + 1 : sigma_2 + in_g_p13_delay5;
+    anti_u6_in = ({1'b0,sigma_3} + {1'b0,in_g_p12_delay6} >= 255)? sigma_3 + in_g_p12_delay6 + 1 : sigma_3 + in_g_p12_delay6;
+    log_u3_in = anti_u4_out ^ anti_u5_out ^ anti_u6_out ^ in5_delay3;
+    sigma_4_n = (cnt == 10)? (log_u3_out >= in_g_p11_delay7)? log_u3_out - in_g_p11_delay7 : log_u3_out - in_g_p11_delay7-1 : sigma_4;
+    
+end
+
+
+assign finish_n = (cnt == 10)?1:0;
+
+
+endmodule
 
 module add_gf(
 input [7:0] in1,
@@ -758,20 +1615,101 @@ input [7:0] in2,
 output reg [7:0] out
 );
 
-reg [8:0] tmp;
 
 always@(*)begin
-    tmp = in1 + in2;
-    if(tmp >= 255)begin
-        out = tmp[7:0] + 8'd1;
+    if({1'b0, in1} + {1'b0,in2} >= 255)begin
+        out = in1 + in2 + 1;
     end
     else begin
-        out = tmp[7:0];
+        out = in1+in2;
     end
 end
 endmodule
 
 
+
+module rect(
+input clk,
+input [7:0] in,
+input [7:0] in_c,
+input in_sign,
+
+output reg out_sign,
+output reg [7:0]out_c,
+output reg [7:0] out,
+output [7:0] in_g
+);
+
+
+wire [7:0] in1;
+reg [7:0] in2;
+reg [7:0] in3;
+wire [7:0] in4;
+reg [8:0] tmp;
+
+log u1 (.in(in),.out(in1));
+antilog u2(.in(in3),.out(in4));
+assign in_g = in1;
+
+always@(*)begin
+    tmp =  {1'b0,in1} + {1'b0,in_c};
+    if(in_sign == 0)begin
+        if(tmp >= 255)begin
+            in2 = tmp[7:0] + 8'b1;
+        end
+        else begin
+            in2 = tmp[7:0];
+        end
+    end
+    else begin
+        if(in1 >= in_c)begin
+            in2 = in1-in_c;
+        end
+        else begin
+            in2 = in1-in_c-1;
+        end
+    end
+end
+
+always@(posedge clk)begin
+    in3 <= in2;
+    out_sign <= in_sign;
+    out_c <= in_c;
+end
+
+always@(*)begin
+    out = in4 ^ in;
+end
+
+
+endmodule
+
+module circle(
+input clk,
+input [7:0] in,
+output reg [7:0] out,
+output reg sign,
+output [7:0]in_g
+);
+
+reg [7:0] in2;
+reg [8:0] tmp;
+
+wire [7:0] in1;
+
+log u1 (.in(in),.out(in1));
+assign in_g = in1;
+
+always@(posedge clk)begin 
+    in2 <= in1;
+end
+
+always@(*)begin
+    sign = (in1 > in2) ? 0:1;
+    out = (in1 > in2) ? in1-in2 : in2-in1;
+end
+
+endmodule
 
 module log(
 input [7:0] in,
@@ -1314,6 +2252,175 @@ end
 endmodule
 
 
+module error_position(
+input [7:0] sigma_1,
+input [7:0] sigma_2,
+input [7:0] sigma_3,
+input [7:0] sigma_4,
+input clk,
+input srstn,
+input enable,
+
+output[7:0] i1,
+output[7:0] i2,
+output[7:0] i3,
+output[7:0] i4,
+output reg finish
+
+);
+
+localparam [3:0] IDLE = 0;
+localparam [3:0] TRY1 = 1;
+localparam [3:0] TRY2 = 2;
+localparam [3:0] TRY3 = 3;
+localparam [3:0] TRY4 = 4;
+localparam [3:0] TRY5 = 5;
+localparam [3:0] CHECK = 6;
+localparam [3:0] FINISH = 7;
+
+
+
+reg [3:0] state, state_n;
+reg [7:0] try_i, try_i_n;
+reg [7:0] try_i_2, try_i_2_n;
+reg [7:0] det, det_n;
+
+reg [7:0] anti_in; 
+wire [7:0]anti_out;
+
+reg [7:0] result [0:3];
+reg [7:0] result_n [3:0];
+
+
+antilog anti1 (.in(anti_in),.out(anti_out));
+
+always@(posedge clk)begin
+    if(~srstn)begin
+        state <= 0;
+    end
+    else begin
+        state <= state_n;
+    end
+end
+always@(posedge clk)begin
+    try_i <= try_i_n;
+    try_i_2 <= try_i_2_n;
+    det <= det_n;
+    result[0] <= result_n[0];
+    result[1] <= result_n[1];
+    result[2] <= result_n[2];
+    result[3] <= result_n[3];
+end
+
+assign i1 = result[0];
+assign i2 = result[1];
+assign i3 = result[2];
+assign i4 = result[3];
+
+always@(*)begin
+    if(state == CHECK)begin
+        if(det == 0)begin
+            result_n[3] = result[2];
+            result_n[2] = result[1];
+            result_n[1] = result[0];
+            result_n[0] = try_i;
+        end
+        else begin
+            result_n[0] = result[0];
+            result_n[1] = result[1];
+            result_n[2] = result[2];
+            result_n[3] = result[3];
+        end
+    end
+    else begin
+        result_n[0] = result[0];
+        result_n[1] = result[1];
+        result_n[2] = result[2];
+        result_n[3] = result[3];
+    end
+end
+
+always@(*)begin
+    case(state)
+        IDLE:begin
+            state_n = (enable)? TRY1 : IDLE;
+            anti_in = 0;
+            try_i_n = 43;
+            try_i_2_n = 43;
+            det_n = 0;
+            finish = 0;
+        end
+        TRY1:begin
+            state_n = TRY2;
+            anti_in = sigma_4;
+            try_i_n = try_i;
+            try_i_2_n = try_i;
+            det_n = anti_out;
+            finish = 0;
+        end
+        TRY2:begin
+            state_n = TRY3;
+            anti_in = ({1'b0, sigma_3} + {1'b0, try_i_2} >= 255)? sigma_3 + try_i_2 + 1 : sigma_3 + try_i_2  ;
+            try_i_n = try_i;
+            try_i_2_n = try_i_2 + try_i;
+            det_n = det ^ anti_out;
+            finish = 0;
+        end
+        TRY3:begin
+            state_n = TRY4;
+            anti_in = ({1'b0, sigma_2} + {1'b0, try_i_2} >= 255)? sigma_2 + try_i_2 + 1 : sigma_2 + try_i_2  ;
+            try_i_n = try_i;
+            try_i_2_n = try_i_2 + try_i;
+            det_n = det ^ anti_out;
+            finish = 0;
+        end
+        TRY4:begin
+            state_n = TRY5;
+            anti_in = ({1'b0, sigma_1} + {1'b0, try_i_2} >= 255)? sigma_1 + try_i_2 + 1 : sigma_1 + try_i_2  ;
+            try_i_n = try_i;
+            try_i_2_n = try_i_2 + try_i;
+            det_n = det ^ anti_out;
+            finish = 0;
+        end
+        TRY5:begin
+            state_n = CHECK;
+            anti_in = try_i_2;
+            try_i_n = try_i;
+            try_i_2_n = try_i_2;
+            det_n = det ^ anti_out;
+            finish = 0;
+        end
+        CHECK:begin
+            state_n = (try_i == 16) ? FINISH : TRY2;
+            anti_in = sigma_4;
+            try_i_n = try_i - 1;
+            try_i_2_n = try_i - 1;
+            det_n = anti_out;
+            finish = 0;
+        end
+        FINISH:begin
+            state_n = FINISH;
+            anti_in = 0;
+            try_i_n = try_i;
+            try_i_2_n = try_i_2;
+            det_n = 0;
+            finish = 1;
+        end
+        default:begin
+            state_n = 0;
+            anti_in = 0;
+            try_i_n = try_i;
+            try_i_2_n = try_i_2;
+            det_n = 0;
+            finish = 0;
+        end
+    endcase
+end
+
+
+
+
+endmodule
 
 
 
