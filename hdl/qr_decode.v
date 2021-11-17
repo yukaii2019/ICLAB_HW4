@@ -278,7 +278,7 @@ wire enable_err_pos;
 assign enable_err_pos = finish_sys;
 wire [7:0] i1, i2,i3,i4;
 wire finish_err_pos;
-
+wire [2:0] error_count;
 
 reg [7:0] i1_tmp, i2_tmp,i3_tmp,i4_tmp;
 wire [7:0] i1_anti, i2_anti,i3_anti,i4_anti;
@@ -300,6 +300,7 @@ error_position epu1(
 .srstn(srstn),
 .enable(enable_err_pos),
 
+.error_count(error_count),
 .i1(i1),
 .i2(i2),
 .i3(i3),
@@ -359,6 +360,7 @@ always@(posedge clk)begin
 end
 
 integer m;
+reg [7:0] sigma_tmp;
 always@(*)begin
     if(state == FIX_ERROR)begin
         fix_error_cnt_n = fix_error_cnt + 1;
@@ -368,22 +370,27 @@ always@(*)begin
 
         case(fix_error_cnt)
             0:begin
-                anti_in_fix_error = ({1'b0, sigma_4} + {1'b0, i1} >= 255)? sigma_4+i1 +1 : sigma_4 + i1;
+                sigma_tmp = (error_count == 3) ? sigma_3 : sigma_4;
+                anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i1} >= 255)? sigma_tmp+i1 +1 : sigma_tmp + i1;
                 offset_n[43-i1] =  anti_out_fix_error;
             end
             1:begin
-                anti_in_fix_error = ({1'b0, sigma_3} + {1'b0, i2} >= 255)? sigma_3+i2 +1 : sigma_3 + i2;
+                sigma_tmp = (error_count == 3) ? sigma_2 : sigma_3;
+                anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i2} >= 255)? sigma_tmp+i2 +1 : sigma_tmp + i2;
                 offset_n[43-i2] =  anti_out_fix_error;
             end
             2:begin
-                anti_in_fix_error = ({1'b0, sigma_2} + {1'b0, i3} >= 255)? sigma_2+i3 +1 : sigma_2 + i3;
+                sigma_tmp = (error_count == 3) ? sigma_1 : sigma_2;
+                anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i3} >= 255)? sigma_tmp+i3 +1 : sigma_tmp + i3;
                 offset_n[43-i3] =  anti_out_fix_error;
             end
             3:begin
-                anti_in_fix_error = ({1'b0, sigma_1} + {1'b0, i4} >= 255)? sigma_1+i4 +1 : sigma_1 + i4;
+                sigma_tmp = sigma_1;
+                anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i4} >= 255)? sigma_tmp+i4 +1 : sigma_tmp + i4;
                 offset_n[43-i4] =  anti_out_fix_error;
             end
             default:begin
+                sigma_tmp = 0;
                 anti_in_fix_error = 0;
             end
         endcase
@@ -391,6 +398,7 @@ always@(*)begin
     else begin
         fix_error_cnt_n = 0;
         anti_in_fix_error = 0 ;
+        sigma_tmp = 0;
         for ( m = 0 ; m < 28 ; m = m +1)begin
             offset_n[m] = offset[m];
         end
@@ -409,6 +417,8 @@ end
 
 reg [2:0] sys_cnt;
 reg [2:0] sys_cnt_n;
+wire mode_sys;
+assign mode_sys = (state == SOLVE_EQUATION_2)? (error_count == 3)? 1 : 0 :0;
 
 systolic sys1(
 .in1(in1_sys),
@@ -419,6 +429,7 @@ systolic sys1(
 .clk(clk),
 .srstn(srstn),
 .start(start_sys),
+.mode(mode_sys),
 
 .sigma_1(sigma_1),
 .sigma_2(sigma_2),
@@ -545,14 +556,14 @@ always@(*)begin
     end
 end
 
-wire [7:0] s0 = syndrome[0];
-wire [7:0] s1 = syndrome[1];
-wire [7:0] s2 = syndrome[2];
-wire [7:0] s3 = syndrome[3];
-wire [7:0] s4 = syndrome[4];
-wire [7:0] s5 = syndrome[5];
-wire [7:0] s6 = syndrome[6];
-wire [7:0] s7 = syndrome[7];
+//wire [7:0] s0 = syndrome[0];
+//wire [7:0] s1 = syndrome[1];
+//wire [7:0] s2 = syndrome[2];
+//wire [7:0] s3 = syndrome[3];
+//wire [7:0] s4 = syndrome[4];
+//wire [7:0] s5 = syndrome[5];
+//wire [7:0] s6 = syndrome[6];
+//wire [7:0] s7 = syndrome[7];
 
 
 always@(posedge clk)begin
@@ -778,7 +789,7 @@ always@(*)begin
             gf_cnt_y_n = 0;
         end
         FIX_ERROR : begin
-            state_n = (fix_error_cnt == 3)? OUTPUT : FIX_ERROR;
+            state_n = (fix_error_cnt == error_count - 1)? OUTPUT : FIX_ERROR;
             mask_raddr = 0;
             mask_n = 0;
             mask_cnt_n = 0;
@@ -1056,6 +1067,7 @@ input [7:0] in5,
 input clk,
 input start,
 input srstn,
+input mode,
 
 output reg [7:0] sigma_1,
 output reg [7:0] sigma_2,
@@ -1134,11 +1146,48 @@ wire[7:0] in_g_p33;
 wire[7:0] in_g_p41;
 wire[7:0] in_g_p42;
 
+wire [7:0] w_p12_p21_tmp;
+wire [7:0] w_p13_p22_tmp;
+wire [7:0] w_p14_p23_tmp;
+wire [7:0] w_p15_p24_tmp;
+
+//circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
+//rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21),.in_g(in_g_p12));
+//rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22),.in_g(in_g_p13));
+//rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23),.in_g(in_g_p14));
+//rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24),.in_g(in_g_p15));
+
 circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
-rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21),.in_g(in_g_p12));
-rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22),.in_g(in_g_p13));
-rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23),.in_g(in_g_p14));
-rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24),.in_g(in_g_p15));
+rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21_tmp),.in_g(in_g_p12));
+rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22_tmp),.in_g(in_g_p13));
+rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23_tmp),.in_g(in_g_p14));
+rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24_tmp),.in_g(in_g_p15));
+
+
+
+
+reg [7:0] in1_d1, in1_d2;
+reg [7:0] in2_d1, in2_d2;
+reg [7:0] in3_d1, in3_d2;
+reg [7:0] in5_d1;
+
+always@(posedge clk)begin
+    in1_d1 <= in1;
+    in1_d2 <= in1_d1;
+    
+    in2_d1 <= in2;
+    in2_d2 <= in2_d1;
+    
+    in3_d1 <= in3;
+    in3_d2 <= in3_d1;
+    
+    in5_d1 <= in5;
+end
+
+assign w_p12_p21 = (mode == 0) ? w_p12_p21_tmp : in1_d2;
+assign w_p13_p22 = (mode == 0) ? w_p13_p22_tmp : in2_d2;
+assign w_p14_p23 = (mode == 0) ? w_p14_p23_tmp : in3_d2;
+assign w_p15_p24 = (mode == 0) ? w_p15_p24_tmp : in5_d1;
 
 circle p21 (.clk(clk),.in(w_p12_p21),.out(w_p21_p22),.sign(s_p21_p22),.in_g(in_g_p21));
 rect   p22 (.clk(clk),.in(w_p13_p22),.in_c(w_p21_p22),.in_sign(s_p21_p22),.out_c(w_p22_p23),.out_sign(s_p22_p23),.out(w_p22_p31),.in_g(in_g_p22));
@@ -1286,7 +1335,7 @@ always@(posedge clk)begin
     in_g_p21_delay5 <= in_g_p21_delay4;
 
    // in5_delay1 <= in5;
-    in5_delay1 <= in5;
+    in5_delay1 <= (mode == 0) ? in5 : in5_d1;
     in5_delay2 <= in5_delay1;
     in5_delay3 <= in5_delay2;
     in_g_p14_delay1 <= in_g_p14;
@@ -2010,7 +2059,8 @@ output[7:0] i1,
 output[7:0] i2,
 output[7:0] i3,
 output[7:0] i4,
-output reg finish
+output reg finish,
+output reg [2:0] error_count 
 
 );
 
@@ -2036,6 +2086,7 @@ wire [7:0]anti_out;
 reg [7:0] result [0:3];
 reg [7:0] result_n [3:0];
 
+reg [2:0] error_count_n;
 
 antilog anti1 (.in(anti_in),.out(anti_out));
 
@@ -2055,6 +2106,7 @@ always@(posedge clk)begin
     result[1] <= result_n[1];
     result[2] <= result_n[2];
     result[3] <= result_n[3];
+    error_count <= error_count_n;
 end
 
 assign i1 = result[0];
@@ -2082,6 +2134,18 @@ always@(*)begin
         result_n[1] = result[1];
         result_n[2] = result[2];
         result_n[3] = result[3];
+    end
+end
+
+always@(*)begin
+    if(state == IDLE)begin
+        error_count_n = 0 ;
+    end
+    else if (state == CHECK)begin
+        error_count_n = (det == 0)? error_count + 1 : error_count;
+    end
+    else begin
+        error_count_n = error_count;
     end
 end
 
