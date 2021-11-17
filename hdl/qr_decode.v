@@ -29,16 +29,10 @@ localparam [3:0] DE_MASKING_2 = 4;
 localparam [3:0] DE_MASKING_3 = 5;
 localparam [3:0] CALCULATE_SYNDROME_1 = 6;
 localparam [3:0] CALCULATE_SYNDROME_2 = 7;
-//localparam [3:0] CALCULATE_GF_SYNDROME = 8;
-
 localparam [3:0] SOLVE_EQUATION = 8;
 localparam [3:0] FIND_ERROR_POSITION = 9;
 localparam [3:0] SOLVE_EQUATION_2 = 10;
 localparam [3:0] FIX_ERROR = 11;
-
-
-
-//localparam [3:0] ERROR_CORRECTION_1 = 10;
 localparam [3:0] OUTPUT = 12;
 localparam [3:0] FINISH = 13;
 
@@ -63,25 +57,8 @@ detect_rotation u1(
 .finish(pos_rot_finish)
 );
 
-wire [7:0] log_out;
-reg [7:0] log_in;
-log u2(
-.in(log_in),
-.out(log_out)
-);
-
-wire [7:0] antilog_out;
-wire [7:0] antilog_in;
-
-antilog u3(
-.in(antilog_in),
-.out(antilog_out)
-);
 
 
-
-
-//assign sram_raddr = pos_rot_sram_raddr;
 
 reg [3:0] state;
 reg [3:0] state_n;
@@ -93,7 +70,6 @@ wire [2:0] real_mask;
 assign real_mask = mask ^ 3'b101;
 
 reg [11:0] mask_raddr;
-//reg [11:0] mask_raddr_n;
 
 always@(*)begin
     case(state)
@@ -133,7 +109,7 @@ reg [8:0] read_cnt_n;
 reg [5:0] out_cnt;
 reg [5:0] out_cnt_n;
 
-wire[7:0] c [0:44];
+wire[7:0] c [0:43];
 reg [7:0] c_correct[0:27];
 reg [7:0] offset[0:27];
 reg [7:0] offset_n[0:27];
@@ -142,8 +118,6 @@ wire [7:0] length;
 
 reg [5:0] gf_cnt;
 reg [5:0] gf_cnt_n;
-//reg [7:0] c_gf [0:44];
-//reg [7:0] c_gf_n;
 
 reg[7:0] in1_sys,in2_sys,in3_sys,in4_sys,in5_sys;
 reg[7:0] in1_sys_n,in2_sys_n,in3_sys_n,in4_sys_n,in5_sys_n;
@@ -159,7 +133,6 @@ assign length = {c_correct[0][3:0],c_correct[1][7:4]};
 
 assign real_x_cnt = (mode == 1) ? x_cnt : (mode == 2)? y_cnt : (mode == 3)? 24-x_cnt : 24-y_cnt; 
 assign real_y_cnt = (mode == 1) ? y_cnt : (mode == 2)? 24-x_cnt : (mode == 3)? 24-y_cnt : x_cnt; 
-
 
 
 
@@ -208,9 +181,24 @@ assign c[41] = {code[150], code[174], code[175], code[199], code[200], code[224]
 assign c[42] = {code[250], code[274], code[275], code[299], code[300], code[324], code[325], code[326]};
 assign c[43] = {code[327], code[301], code[302], code[276], code[277], code[251], code[252], code[226]};
 
+wire [7:0] log_out;
+wire [7:0] log_in;
+log u2(
+.in(c[gf_cnt]),
+.out(log_out)
+);
 
-wire [7:0] test_0 = c_correct[0];
-wire [7:0] test_1 = c_correct[1];
+wire [7:0] antilog_out;
+wire [7:0] antilog_in;
+
+antilog u3(
+.in(antilog_in),
+.out(antilog_out)
+);
+
+
+//wire [7:0] test_0 = c_correct[0];
+//wire [7:0] test_1 = c_correct[1];
 
 integer k;
 always@(*)begin
@@ -218,24 +206,6 @@ always@(*)begin
         c_correct[k] = c[k] ^ offset[k];
     end
 end
-
-
-
-
-
-//always(posedge clk)begin
-//    if(state == ERROR_CORRECTION_1)begin
-//        //for(j = 43 j > 0; j = j - 1)begin
-//            //c_gf[j] <= c_gf[j-1];
-//        //end
-//        //c_gf[0] <= c_gf_n;
-//    end
-//    else begin
-//        //for(j = 43 j >= 0; j = j - 1)begin
-//        //    c_gf[j] <= c_gf[j];
-//        //end
-//    end
-//end
 
 reg [7:0] syndrome [0:7];
 wire [7:0] tmp_s;
@@ -280,20 +250,7 @@ always@(posedge clk)begin
     end
 end
 
-//
-//
-//add_gf add_u1(.in1(log_out),.in2(ss[0]),.out(tmp_s[0]))
-//add_gf add_u2(.in1(log_out),.in2(ss[1]),.out(tmp_s[1]))
-//add_gf add_u3(.in1(log_out),.in2(ss[2]),.out(tmp_s[2]))
-//add_gf add_u4(.in1(log_out),.in2(ss[3]),.out(tmp_s[3]))
-//add_gf add_u5(.in1(log_out),.in2(ss[4]),.out(tmp_s[4]))
-//add_gf add_u6(.in1(log_out),.in2(ss[5]),.out(tmp_s[5]))
-//add_gf add_u7(.in1(log_out),.in2(ss[6]),.out(tmp_s[6]))
-
-
-//reg [5:0]  gf_cnt_x, gf_cnt_x_n;
 reg [2:0]  gf_cnt_y, gf_cnt_y_n;
-//reg [2:0] sd_cnt, sd_cnt_n;
 
 add_gf add_u1(.in1(log_out),.in2(ss[gf_cnt_y]),.out(antilog_in));
 
@@ -315,22 +272,7 @@ always@(posedge clk)begin
     end
 end
 
-always@(*)begin
-    //case(state)
-        //CALCULATE_SYNDROME_2:begin
-            log_in = c[gf_cnt];
-        //end
-        //CALCULATE_GF_SYNDROME:begin
-        //    log_in = syndrome[sd_cnt];
-        //end
-        //SOLVE_EQUATION_1:begin
-        //    log_in = aa;
-        //end
-        //default:begin
-        //    log_in = 0;
-        //end
-    //endcase
-end
+//assign log_in = c[gf_cnt];
 
 wire enable_err_pos;
 assign enable_err_pos = finish_sys;
@@ -456,10 +398,10 @@ always@(*)begin
     end
 end
 
-wire [7:0] test_c9  = c[9];
-wire [7:0] test_c10  = c[10];
-wire [7:0] test_c11  = c[11];
-wire [7:0] test_c12  = c[12];
+//wire [7:0] test_c9  = c[9];
+//wire [7:0] test_c10  = c[10];
+//wire [7:0] test_c11  = c[11];
+//wire [7:0] test_c12  = c[12];
 
 
 
@@ -613,36 +555,6 @@ wire [7:0] s6 = syndrome[6];
 wire [7:0] s7 = syndrome[7];
 
 
-
-
-
-
-//reg [7:0] gf_syndrome[0:7];
-//reg [7:0] step_2_coefficient[0:11];
-
-
-//always@(posedge clk)begin
-//    gf_syndrome[0] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[1] : gf_syndrome[0];   
-//    gf_syndrome[1] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[2] : gf_syndrome[1];   
-//    gf_syndrome[2] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[3] : gf_syndrome[2];   
-//    gf_syndrome[3] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[4] : gf_syndrome[3];   
-//    gf_syndrome[4] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[5] : gf_syndrome[4];   
-//    gf_syndrome[5] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[6] : gf_syndrome[5];   
-//    gf_syndrome[6] <= (state == CALCULATE_GF_SYNDROME)? gf_syndrome[7] : gf_syndrome[6];   
-//    gf_syndrome[7] <= (state == CALCULATE_GF_SYNDROME)? log_out : gf_syndrome[7];   
-//end
-//wire[7:0] eq_diff1;
-//wire[7:0] eq_diff2;
-//wire[7:0] eq_diff3;
-
-//assign eq_diff1 = (gf_syndrome[0] > gf_syndrome[1])? gf_syndrome[0] - gf syndrome[1]: gf_syndrome[1] - gf syndrome[0];
-//assign eq_diff2 = (gf_syndrome[1] > gf_syndrome[2])? gf_syndrome[1] - gf syndrome[2]: gf_syndrome[2] - gf syndrome[1];
-//assign eq_diff3 = (gf_syndrome[2] > gf_syndrome[3])? gf_syndrome[2] - gf syndrome[3]: gf_syndrome[3] - gf syndrome[2];
-
-//wire[7:0] a1 = (gf_syndrome[0] < gf_syndrome[1])? gf_syndrome[0] : gf_syndrome[1]; 
-
-
-
 always@(posedge clk)begin
     if(~srstn)begin
         state <= IDLE;
@@ -676,7 +588,6 @@ always@(posedge clk)begin
     else begin
         code <= code;
     end
-   // mask_raddr <= mask_raddr_n;
     if(state == FIND_MASK_PATTERN)begin
         mask[2] <= mask[1];
         mask[1] <= mask[0];
@@ -688,18 +599,14 @@ always@(posedge clk)begin
     read_cnt <= read_cnt_n;
     out_cnt <= out_cnt_n;
     gf_cnt <= gf_cnt_n;
-    //gf_cnt_x <= gf_cnt_x_n;
     gf_cnt_y <= gf_cnt_y_n;
-    //sd_cnt <= sd_cnt_n;
 end
 
 always@(*)begin
     case(state)
         IDLE:begin
             state_n = (qr_decode_start)? DETECT_POSITION_AND_ROTATION:IDLE;
-            //mask_raddr_n = 0;
             mask_raddr = 0;
-            
             mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
@@ -708,13 +615,10 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            //gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
-            //sd_cnt_n = 0;
         end
         DETECT_POSITION_AND_ROTATION:begin
             state_n = (pos_rot_finish) ? FIND_MASK_PATTERN : DETECT_POSITION_AND_ROTATION;
-            //mask_raddr_n = (mode == 1 || mode == 4)? position+8*64+2: position + 16*64+22;
             mask_raddr = 0;
             mask_n = 0;
             mask_cnt_n = 0;
@@ -724,15 +628,11 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            //gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
-            //sd_cnt_n = 0;
         end
         FIND_MASK_PATTERN:begin
             state_n = (mask_cnt == 2)? DE_MASKING_1 : FIND_MASK_PATTERN;
-            //mask_raddr_n = (mask_cnt == 2)? position + 64*real_y_cnt + real_x_cnt :  (mode == 1 || mode == 4)? mask_raddr + 1 : mask_raddr -1;
             mask_raddr = (mode == 1 || mode == 4)? position+8*64+2 + mask_cnt : position + 16*64+22 - mask_cnt;
-            
             mask_n = sram_rdata;
             mask_cnt_n = mask_cnt + 1;
             code_n = 0;
@@ -741,13 +641,12 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-           // gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
-            //sd_cnt_n = 0;
         end
         DE_MASKING_1:begin    
             state_n = (x_cnt == 16 && y_cnt == 8)? DE_MASKING_2 :DE_MASKING_1;
             mask_raddr = position + 64*real_y_cnt + real_x_cnt;
+            mask_n = 0;
             mask_cnt_n = 0;
             case(real_mask)
                 0:begin code_n = sram_rdata ^ mask_pattern0[read_cnt]; end
@@ -765,13 +664,12 @@ always@(*)begin
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-           // gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
-            //sd_cnt_n = 0;
         end
         DE_MASKING_2:begin
             state_n = (x_cnt == 24 &&  y_cnt == 16)? DE_MASKING_3 : DE_MASKING_2;
             mask_raddr = position + 64*real_y_cnt + real_x_cnt;
+            mask_n = 0;
             mask_cnt_n = 0;
             case(real_mask)
                 0:begin code_n = sram_rdata ^ mask_pattern0[read_cnt]; end
@@ -789,13 +687,12 @@ always@(*)begin
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            //gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
-            //sd_cnt_n = 0;
         end
         DE_MASKING_3:begin
             state_n = (x_cnt == 24 && y_cnt == 24)? CALCULATE_SYNDROME_2 : DE_MASKING_3;
             mask_raddr = position + 64*real_y_cnt + real_x_cnt;
+            mask_n = 0;
             mask_cnt_n = 0;
             case(real_mask)
                 0:begin code_n = sram_rdata ^ mask_pattern0[read_cnt]; end
@@ -813,13 +710,12 @@ always@(*)begin
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-           // gf_cnt_x_n = 0;
             gf_cnt_y_n = 0;
-            //sd_cnt_n = 0;
         end
         CALCULATE_SYNDROME_1:begin
             state_n = CALCULATE_SYNDROME_2;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -828,11 +724,11 @@ always@(*)begin
             out_cnt_n = 0;
             gf_cnt_n = gf_cnt - 1;
             gf_cnt_y_n = 0;
-            //sd_cnt_n = 0;
         end
         CALCULATE_SYNDROME_2:begin
             state_n = (gf_cnt_y == 7) ? (gf_cnt == 0)? SOLVE_EQUATION :CALCULATE_SYNDROME_1: CALCULATE_SYNDROME_2;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -841,11 +737,11 @@ always@(*)begin
             out_cnt_n = 0;
             gf_cnt_n =  gf_cnt;
             gf_cnt_y_n = gf_cnt_y + 1;
-            //sd_cnt_n = 0;
         end
         SOLVE_EQUATION:begin
             state_n = (finish_sys == 1)? FIND_ERROR_POSITION : SOLVE_EQUATION;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -858,6 +754,7 @@ always@(*)begin
         FIND_ERROR_POSITION:begin
             state_n = (finish_err_pos)? SOLVE_EQUATION_2 : FIND_ERROR_POSITION;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -870,6 +767,7 @@ always@(*)begin
         SOLVE_EQUATION_2:begin
             state_n = (finish_sys)? FIX_ERROR : SOLVE_EQUATION_2;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -882,6 +780,7 @@ always@(*)begin
         FIX_ERROR : begin
             state_n = (fix_error_cnt == 3)? OUTPUT : FIX_ERROR;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -894,6 +793,7 @@ always@(*)begin
         OUTPUT:begin
             state_n = (out_cnt == length-1)? FINISH : OUTPUT;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -901,10 +801,12 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = out_cnt + 1;
             gf_cnt_n = 0;
+            gf_cnt_y_n = 0;    
         end
         FINISH:begin
             state_n = FINISH;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -912,10 +814,12 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 0;
+            gf_cnt_y_n = 0;    
         end
         default:begin
             state_n = 0;
             mask_raddr = 0;
+            mask_n = 0;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 0;
@@ -923,6 +827,7 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 0;
+            gf_cnt_y_n = 0;    
         end
     endcase
 end
@@ -948,161 +853,6 @@ end
 
 endmodule
 
-
-
-
-
-//module solve_equation(
-//input [7:0] s0,
-//input [7:0] s1,
-//input [7:0] s2,
-//input [7:0] s3,
-//input [7:0] s4,
-//input [7:0] s5,
-//input [7:0] s6,
-//input [7:0] s7,
-//input [7:0] origin_num,
-//input enable,
-//input clk,
-//input srstn,
-//
-//output [7:0] out1,
-//output [7:0] out2,
-//output [7:0] out3,
-//output reg  [7:0] gf_num,
-//output finish
-//);
-//
-//localparam [3:0] IDLE = 0;
-//localparam [3:0] COMPARE = 1;
-//localparam [3:0] INCREAS_BY_DIFF = 2;
-//
-//reg [3:0]state, state_n;
-//reg [7:0] diff;
-//
-//reg [7:0] num1, num2;
-//reg [7:0] num1_n, num2_n;
-//
-//reg [7:0]in1;
-//reg [1:0] cnt_x;
-//
-//reg [7:0] a ,b;
-//reg [1:0] row;
-//
-//wire [7:0] result;
-//
-//reg [7:0] 
-//
-//assign result = num1 ^ num2;
-//
-//always@(*)begin
-//    case(row)
-//        0: begin 
-//            case(cnt_x)
-//                0: a = s1;
-//                1: a = s2;
-//                2: a = s3;
-//                3: a = s4;
-//                default: a = 0;
-//            endcase
-//        end
-//        1: begin 
-//            case(cnt_x)
-//                0: a = s2;
-//                1: a = s3;
-//                2: a = s4;
-//                3: a = s5;
-//                default : a = 0;
-//            endcase 
-//        end
-//        2: begin
-//            case(cnt_x)
-//                0: a = s3;
-//                1: a = s4;
-//                2: a = s5;
-//                3: a = s6;
-//            default : a = 0;
-//        end
-//        3: begin
-//            case(cnt_x)
-//                0: a = s4;
-//                1: a = s5;
-//                2: a = s6;
-//                3: a = s7;
-//            default : a = 0;
-//        end
-//        default:begin 
-//            a = 0;
-//        end
-//    endcase
-//end
-//
-//wire cmp1, cmp2, cmp3;
-//assign cmp1 = (s0>s1)? 1 : 0;
-//assign cmp2 = (s0>s2)? 1 : 0;
-//assign cmp3 = (s0>s3)? 1 : 0;
-//
-//
-//add_gf(.in1(in1),.in2(diff),out,(b));
-//
-//always@(*)begin
-//    case(state)
-//        IDLE:begin
-//            state_n = (enable)? COMPARE : IDLE;
-//            row = 0;
-//            diff = 0;
-//            in1 = 0;
-//            gf_num = 0;
-//            num1_n = 0;
-//            num2_n = 0;
-//            cnt_x_n = 0;
-//        end
-//        COMPARE:begin
-//
-//            if(s0>s1)begin
-//                state_n = 
-//                
-//                row = 1;
-//                diff = s0-s1;
-//                in1 = a;
-//                gf_num = b;
-//                num1_n = origin_num;
-//                num2_n = num2;
-//            end
-//            else begin
-//                state_n = 
-//
-//                row = 0;
-//                diff = s1 - s0;
-//                in1 = a;
-//                gf_num = b;
-//                num1_n = num1;
-//                num2_n = origin_num;
-//
-//            end
-//        end
-//    
-//    endcase
-//end
-//
-//
-//always@(posedge clk)begin
-//    if(~srstn)begin
-//        state <= IDLE;
-//    end
-//    else begin
-//        state <= state_n;
-//    end
-//end
-//
-//always@(posedge clk)begin
-//    num1 <= num1_n;
-//    num2 <= num2_n;
-//end
-//
-//
-//
-//endmodule
 
 module detect_rotation(
 input clk,
@@ -1251,7 +1001,7 @@ always@(*)begin
                     0 : mode_n = 3;
                     1 : mode_n = 2;
                     2 : mode_n = 1;
-                    default : mode = 0;
+                    default : mode_n = 0;
                 endcase
             end
             else begin
@@ -1508,11 +1258,6 @@ reg [7:0] in_g_p11_delay4;
 reg [7:0] in_g_p11_delay5;
 reg [7:0] in_g_p11_delay6;
 reg [7:0] in_g_p11_delay7;
-
-
-
-//wire [7:0] in5_delay1_n;
-//assign in5_delay1_n = in5;
 
 
 always@(posedge clk)begin
