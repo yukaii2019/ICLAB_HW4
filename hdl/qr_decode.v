@@ -884,6 +884,7 @@ localparam [3:0] CHECK_ROW_34 =10;
 localparam [3:0] CHECK_ROW_24 =11;
 localparam [3:0] CHECK_ROW_14 =12;
 localparam [3:0] CHECK_ROW_4  =13;
+localparam [3:0] CHECK_ROW_38  =14;
 
 
 localparam [3:0] FIND_FIRST_1_CODE = 1;
@@ -1003,7 +1004,7 @@ always@(*)begin
         end
 
         CHECK_ROW_34:begin
-            state_n = (sram_rdata == 0)?(x == 63)? FIND_FIRST_1_CODE : CHECK_ROW_34 : FIND_FIRST_1_CODE;
+            state_n = (sram_rdata == 0)?(x == 63)? CHECK_ROW_38 : CHECK_ROW_34 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
@@ -1012,7 +1013,20 @@ always@(*)begin
             position_n = 0;
             min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
             x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 35:34:30;
+            y_n = (sram_rdata == 0)?(x==63)? 38:34:30;
+
+        end
+        CHECK_ROW_38:begin
+            state_n = (sram_rdata == 0)?(x == 63)? FIND_FIRST_1_CODE : CHECK_ROW_38 : FIND_FIRST_1_CODE;
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            buffer_n = 0;
+            mode_n = 0;
+            check_pattern_times_n = 0;
+            position_n = 0;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==63)? 39:38:35;
 
         end
         CHECK_ROW_24:begin
