@@ -1,0 +1,202 @@
+ 
+****************************************
+Report : timing
+        -path full
+        -delay max
+        -max_paths 4
+Design : qr_decode
+Version: R-2020.09-SP5
+Date   : Wed Nov 17 14:38:05 2021
+****************************************
+
+ # A fanout number of 1000 was used for high fanout net computations.
+
+Operating Conditions: ss0p95v125c   Library: saed32hvt_ss0p95v125c
+Wire Load Model Mode: enclosed
+
+  Startpoint: srstn (input port clocked by clk)
+  Endpoint: u1/clk_gate_y_cnt_reg/latch
+            (positive level-sensitive latch clocked by clk')
+  Path Group: clk
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  qr_decode          70000                 saed32hvt_ss0p95v125c
+  detect_rotation    8000                  saed32hvt_ss0p95v125c
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                   0.00       0.00
+  clock network delay (ideal)                             0.00       0.00
+  input external delay                                    6.40       6.40 r
+  srstn (in)                                              0.00       6.40 r
+  u1/srstn (detect_rotation)                              0.00       6.40 r
+  u1/U189/Y (NAND2X0_HVT)                                 0.05       6.45 f
+  u1/U29/Y (INVX0_HVT)                                    0.05       6.50 r
+  u1/U272/Y (NAND2X0_HVT)                                 0.06       6.56 f
+  u1/clk_gate_y_cnt_reg/EN (SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_1)
+                                                          0.00       6.56 f
+  u1/clk_gate_y_cnt_reg/latch/D (LATCHX1_HVT)             0.00       6.56 f
+  data arrival time                                                  6.56
+
+  clock clk' (rise edge)                                  4.00       4.00
+  clock network delay (ideal)                             0.00       4.00
+  u1/clk_gate_y_cnt_reg/latch/CLK (LATCHX1_HVT)           0.00       4.00 r
+  time borrowed from endpoint                             2.56       6.56
+  data required time                                                 6.56
+  --------------------------------------------------------------------------
+  data required time                                                 6.56
+  data arrival time                                                 -6.56
+  --------------------------------------------------------------------------
+  slack (MET)                                                        0.00
+
+  Time Borrowing Information
+  --------------------------------------------------------------
+  clk' nominal pulse width                                4.00   
+  library setup time                                     -0.09   
+  --------------------------------------------------------------
+  max time borrow                                         3.91   
+  actual time borrow                                      2.56   
+  --------------------------------------------------------------
+
+
+  Startpoint: srstn (input port clocked by clk)
+  Endpoint: clk_gate_syndrome_reg_2_/latch
+            (positive level-sensitive latch clocked by clk')
+  Path Group: clk
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  qr_decode          70000                 saed32hvt_ss0p95v125c
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                   0.00       0.00
+  clock network delay (ideal)                             0.00       0.00
+  input external delay                                    6.40       6.40 r
+  srstn (in)                                              0.00       6.40 r
+  U3055/Y (INVX32_HVT)                                    0.01       6.41 f
+  U3173/Y (INVX16_HVT)                                    0.02       6.43 r
+  U3123/Y (INVX4_HVT)                                     0.05       6.48 f
+  U4800/Y (AO21X1_HVT)                                    0.07       6.55 f
+  clk_gate_syndrome_reg_2_/EN (SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_71)
+                                                          0.00       6.55 f
+  clk_gate_syndrome_reg_2_/latch/D (LATCHX1_HVT)          0.00       6.55 f
+  data arrival time                                                  6.55
+
+  clock clk' (rise edge)                                  4.00       4.00
+  clock network delay (ideal)                             0.00       4.00
+  clk_gate_syndrome_reg_2_/latch/CLK (LATCHX1_HVT)        0.00       4.00 r
+  time borrowed from endpoint                             2.55       6.55
+  data required time                                                 6.55
+  --------------------------------------------------------------------------
+  data required time                                                 6.55
+  data arrival time                                                 -6.55
+  --------------------------------------------------------------------------
+  slack (MET)                                                        0.00
+
+  Time Borrowing Information
+  --------------------------------------------------------------
+  clk' nominal pulse width                                4.00   
+  library setup time                                     -0.08   
+  --------------------------------------------------------------
+  max time borrow                                         3.92   
+  actual time borrow                                      2.55   
+  --------------------------------------------------------------
+
+
+  Startpoint: srstn (input port clocked by clk)
+  Endpoint: clk_gate_syndrome_reg_3_/latch
+            (positive level-sensitive latch clocked by clk')
+  Path Group: clk
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  qr_decode          70000                 saed32hvt_ss0p95v125c
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                   0.00       0.00
+  clock network delay (ideal)                             0.00       0.00
+  input external delay                                    6.40       6.40 r
+  srstn (in)                                              0.00       6.40 r
+  U3055/Y (INVX32_HVT)                                    0.01       6.41 f
+  U3173/Y (INVX16_HVT)                                    0.02       6.43 r
+  U3124/Y (INVX4_HVT)                                     0.05       6.48 f
+  U4801/Y (AO21X1_HVT)                                    0.07       6.55 f
+  clk_gate_syndrome_reg_3_/EN (SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_70)
+                                                          0.00       6.55 f
+  clk_gate_syndrome_reg_3_/latch/D (LATCHX1_HVT)          0.00       6.55 f
+  data arrival time                                                  6.55
+
+  clock clk' (rise edge)                                  4.00       4.00
+  clock network delay (ideal)                             0.00       4.00
+  clk_gate_syndrome_reg_3_/latch/CLK (LATCHX1_HVT)        0.00       4.00 r
+  time borrowed from endpoint                             2.55       6.55
+  data required time                                                 6.55
+  --------------------------------------------------------------------------
+  data required time                                                 6.55
+  data arrival time                                                 -6.55
+  --------------------------------------------------------------------------
+  slack (MET)                                                        0.00
+
+  Time Borrowing Information
+  --------------------------------------------------------------
+  clk' nominal pulse width                                4.00   
+  library setup time                                     -0.08   
+  --------------------------------------------------------------
+  max time borrow                                         3.92   
+  actual time borrow                                      2.55   
+  --------------------------------------------------------------
+
+
+  Startpoint: srstn (input port clocked by clk)
+  Endpoint: clk_gate_syndrome_reg_5_/latch
+            (positive level-sensitive latch clocked by clk')
+  Path Group: clk
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  qr_decode          70000                 saed32hvt_ss0p95v125c
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                   0.00       0.00
+  clock network delay (ideal)                             0.00       0.00
+  input external delay                                    6.40       6.40 r
+  srstn (in)                                              0.00       6.40 r
+  U3055/Y (INVX32_HVT)                                    0.01       6.41 f
+  U3173/Y (INVX16_HVT)                                    0.02       6.43 r
+  U3120/Y (INVX4_HVT)                                     0.05       6.48 f
+  U4803/Y (AO21X1_HVT)                                    0.07       6.55 f
+  clk_gate_syndrome_reg_5_/EN (SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_68)
+                                                          0.00       6.55 f
+  clk_gate_syndrome_reg_5_/latch/D (LATCHX1_HVT)          0.00       6.55 f
+  data arrival time                                                  6.55
+
+  clock clk' (rise edge)                                  4.00       4.00
+  clock network delay (ideal)                             0.00       4.00
+  clk_gate_syndrome_reg_5_/latch/CLK (LATCHX1_HVT)        0.00       4.00 r
+  time borrowed from endpoint                             2.55       6.55
+  data required time                                                 6.55
+  --------------------------------------------------------------------------
+  data required time                                                 6.55
+  data arrival time                                                 -6.55
+  --------------------------------------------------------------------------
+  slack (MET)                                                        0.00
+
+  Time Borrowing Information
+  --------------------------------------------------------------
+  clk' nominal pulse width                                4.00   
+  library setup time                                     -0.08   
+  --------------------------------------------------------------
+  max time borrow                                         3.92   
+  actual time borrow                                      2.55   
+  --------------------------------------------------------------
+
+
+1
