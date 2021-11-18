@@ -50,7 +50,7 @@ detect_rotation u1(
 .clk(clk),
 .srstn(srstn),
 .enable(enable),
-.sram_rdata(sram_rdata),
+.data(sram_rdata),
 .sram_raddr(pos_rot_sram_raddr),
 .mode(mode),
 .position(position),
@@ -869,7 +869,7 @@ module detect_rotation(
 input clk,
 input srstn,
 input enable,
-input sram_rdata,
+input data,
 output  [11:0] sram_raddr,
 output reg [2:0] mode,
 output reg [11:0] position,
@@ -885,6 +885,8 @@ localparam [3:0] CHECK_ROW_24 =11;
 localparam [3:0] CHECK_ROW_14 =12;
 localparam [3:0] CHECK_ROW_4  =13;
 localparam [3:0] CHECK_ROW_38  =14;
+localparam [3:0] BLANK  =15;
+
 
 
 localparam [3:0] FIND_FIRST_1_CODE = 1;
@@ -895,16 +897,27 @@ localparam [3:0] FINISH = 5;
 localparam [3:0] FIND_POSITION = 6;
 
 
+reg sram_rdata;
+
+always@(posedge clk)begin
+    sram_rdata <= data;
+end
+
 reg [3:0] state;
 reg [3:0] state_n;
+
+reg [3:0] real_state;
+reg [3:0] real_state_n;
 
 
 always@(posedge clk)begin
     if(~srstn)begin
-        state <= IDLE;
+        //state <= IDLE;
+        real_state <= IDLE;
     end
     else begin
-        state <= state_n;
+        //state <= state_n;
+        real_state <= real_state_n;
     end
 end
 
@@ -935,6 +948,8 @@ reg [5:0] x_n, y_n;
 
 assign sram_raddr = y*64 + x;
 
+
+
 integer i;
 
 always@(posedge clk)begin
@@ -943,18 +958,24 @@ always@(posedge clk)begin
     mode <= mode_n;
     check_pattern_times <= check_pattern_times_n;
     position <= position_n;
-    for(i = 48 ; i >= 1;i = i - 1)begin
-        buffer[i] <= buffer[i-1];
-    end
-    buffer[0] <= buffer_n;
-    min_col <= min_col_n;
+        min_col <= min_col_n;
     x <= x_n;
     y <= y_n;
+    
+    state <= state_n;
+    
+    if(real_state != BLANK)begin
+        for(i = 48 ; i >= 1;i = i - 1)begin
+            buffer[i] <= buffer[i-1];
+        end
+        buffer[0] <= buffer_n;
+    end
 end
 always@(*)begin
-    case(state)
+    case(real_state)
         IDLE:begin
-            state_n = (enable)? CHECK_ROW_19 : IDLE;      
+            real_state_n = BLANK;
+            state_n = CHECK_ROW_19;      
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
@@ -965,119 +986,149 @@ always@(*)begin
             x_n = 0;
             y_n = 19;
         end
+        BLANK:begin
+            real_state_n = state;
+            state_n = state;
+            x_cnt_n = x_cnt;
+            y_cnt_n = y_cnt;
+            buffer_n = 0;
+            mode_n = mode;
+            check_pattern_times_n = check_pattern_times;
+            position_n = position;
+            min_col_n = min_col;
+            //x_n = (state != FIND_POSITION)? x + 1 : x-1;
+            x_n = x+1;
+            y_n = y;
+        end
         CHECK_ROW_19:begin
-            state_n = (sram_rdata == 0)?(x == 63)? CHECK_ROW_29 : CHECK_ROW_19 : CHECK_ROW_9;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_19 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_29 : CHECK_ROW_19 : CHECK_ROW_9;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            x_n = (sram_rdata == 0)? x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 29:19:9;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            //min_col_n = (sram_rdata == 1) ? x-1 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 29:19:9;
         end
         CHECK_ROW_29:begin
-            state_n = (sram_rdata == 0)?(x == 63)? CHECK_ROW_34 : CHECK_ROW_29 : CHECK_ROW_24;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_29 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_34 : CHECK_ROW_29 : CHECK_ROW_24;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 34:29:24;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            //min_col_n = (sram_rdata == 1) ? x-1 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0 : x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 34:29:24;
         end
 
         CHECK_ROW_9:begin
-            state_n = (sram_rdata == 0)?(x == 63)? CHECK_ROW_14 : CHECK_ROW_9 : CHECK_ROW_4;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_9 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_14 : CHECK_ROW_9 : CHECK_ROW_4;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0; 
-            min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 14:9:4;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            //min_col_n = (sram_rdata == 1) ? x-1 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 14:9:4;
         end
 
         CHECK_ROW_34:begin
-            state_n = (sram_rdata == 0)?(x == 63)? CHECK_ROW_38 : CHECK_ROW_34 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_34 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_38 : CHECK_ROW_34 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 38:34:30;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0 : x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 38:34:30;
 
         end
         CHECK_ROW_38:begin
-            state_n = (sram_rdata == 0)?(x == 63)? FIND_FIRST_1_CODE : CHECK_ROW_38 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_38 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_38 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
-            x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 39:38:35;
+            //min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 39:38:35;
 
         end
         CHECK_ROW_24:begin
-            state_n = (sram_rdata == 0)?(x == 63)? FIND_FIRST_1_CODE : CHECK_ROW_24 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_24 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_24 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 25:24:20;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 25:24:20;
         end
         CHECK_ROW_14:begin
-            state_n = (sram_rdata == 0)?(x == 63)? FIND_FIRST_1_CODE : CHECK_ROW_14 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_14 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_14 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 15:14:10;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 15:14:10;
         end
         CHECK_ROW_4:begin
-            state_n = (sram_rdata == 0)?(x == 63)? FIND_FIRST_1_CODE : CHECK_ROW_4 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_4 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_4 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            x_n = (sram_rdata == 0)?x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==63)? 5:4:0;
+            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==45)? 5:4:0;
         end
         FIND_FIRST_1_CODE:begin
+            real_state_n = (sram_rdata == 1) ? BLANK : (x == 40)? BLANK :FIND_FIRST_1_CODE;
             state_n = (sram_rdata == 1)? CHECK_IF_180 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
-            position_n = sram_raddr;
+            position_n = sram_raddr-1;
+            //position_n = sram_raddr-1;
             min_col_n = min_col;
-            x_n = (sram_rdata != 1)?(x == 63)? x + 1 + min_col: x + 1: x + 24;
-            y_n = (sram_rdata != 1)?(x == 63)? y+1 : y :y;
+            //x_n = (sram_rdata != 1)?(x == 40)? min_col : x + 1: x + 24;
+            x_n = (sram_rdata != 1)?(x == 40)? min_col : x + 1: x + 23;
+            y_n = (sram_rdata != 1)?(x == 40)? y+1 : y :y;
         end
         CHECK_IF_180:begin
+            real_state_n = BLANK;
             state_n = (sram_rdata == 0)? FIND_POSITION : IDENTIFY_POSITION_DETECTION_PATTERN;
             x_cnt_n = 0;
             y_cnt_n = 0;
@@ -1086,10 +1137,12 @@ always@(*)begin
             check_pattern_times_n = 0;
             position_n = position;
             min_col_n = min_col;
-            x_n = (sram_rdata == 0) ? x-1 : x-24;
+            x_n = (sram_rdata == 0) ? x-1 : x-25;
+            //x_n = (sram_rdata == 0) ? x-2 : x-25;
             y_n = y;
         end
         IDENTIFY_POSITION_DETECTION_PATTERN:begin
+            real_state_n = (x_cnt == 6 && y_cnt == 6) ? BLANK : (x_cnt == 6)? BLANK : IDENTIFY_POSITION_DETECTION_PATTERN;
             state_n = (x_cnt == 6 && y_cnt == 6)? COMPARE : IDENTIFY_POSITION_DETECTION_PATTERN;
             x_cnt_n = (x_cnt == 6)? 0 :x_cnt + 1; 
             y_cnt_n = (x_cnt == 6)? y_cnt + 1 : y_cnt ; 
@@ -1098,25 +1151,27 @@ always@(*)begin
             check_pattern_times_n = check_pattern_times;
             position_n = position;
             min_col_n = min_col;
-            x_n = (x_cnt == 6)? x-6 :x+1;
+            //x_n = (x_cnt == 6)? x-6 :x+1;
+            x_n = (x_cnt == 6)? x-7 :x+1;
             y_n = (x_cnt == 6)? y+1 :y; 
         
         end
         COMPARE:begin
+            real_state_n = (is_pattern) ? (check_pattern_times != 2)? BLANK : FINISH :FINISH;
             state_n = (is_pattern)? (check_pattern_times != 2)?IDENTIFY_POSITION_DETECTION_PATTERN:FINISH : FINISH;
             if(is_pattern == 1)begin
                 case(check_pattern_times)
                     0:begin
                         y_n = y - 7;
-                        x_n = x + 18;
+                        x_n = x + 17;
                     end
                     1:begin
                         y_n = y + 11;
-                        x_n = x;
+                        x_n = x - 1;
                     end
                     2:begin
                         y_n = y + 7;
-                        x_n = x - 12;
+                        x_n = x - 13;
                     end
                     default:begin
                         y_n = y;
@@ -1152,19 +1207,21 @@ always@(*)begin
         
         end
         FIND_POSITION:begin
+            real_state_n = (sram_rdata == 1) ? FINISH : BLANK;
             state_n = (sram_rdata == 1)? FINISH : FIND_POSITION;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = mode;
             check_pattern_times_n = 0;
-            position_n = sram_raddr-24;
+            position_n = sram_raddr-23;
             min_col_n = min_col;
             x_n = x - 1;
             y_n = y;
         
         end
         FINISH:begin
+            real_state_n = real_state;
             state_n = state;
             x_cnt_n = 0;
             y_cnt_n = 0;
@@ -1178,6 +1235,7 @@ always@(*)begin
         end
 
         default:begin
+            real_state_n = IDLE;
             state_n = IDLE;
             x_cnt_n = 0;
             y_cnt_n = 0;
