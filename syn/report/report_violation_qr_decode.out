@@ -4,7 +4,7 @@ Report : constraint
         -all_violators
 Design : qr_decode
 Version: R-2020.09-SP5
-Date   : Wed Nov 17 14:38:08 2021
+Date   : Fri Nov 19 21:57:41 2021
 ****************************************
 
 
@@ -13,17 +13,19 @@ Date   : Wed Nov 17 14:38:08 2021
                              Required        Actual
    Net                        Fanout         Fanout          Slack
    -----------------------------------------------------------------
-   sys1/p32/n64                 1.64           1.70          -0.06  (VIOLATED)
+   n3019                        1.64           2.76          -1.12  (VIOLATED)
+   n2964                        1.64           2.70          -1.06  (VIOLATED)
+   sys1/w_p15_p24[4]            1.64           2.00          -0.36  (VIOLATED)
 
    -----------------------------------------------------------------
-   Total                      1                  -0.06  
+   Total                      3                  -2.53  
 
    max_area
 
                              Required        Actual
    Design                      Area           Area           Slack
    -----------------------------------------------------------------
-   qr_decode                    0.00       61793.80       -61793.80 (VIOLATED)
+   qr_decode                    0.00       72749.99       -72749.99 (VIOLATED)
 
 
 1

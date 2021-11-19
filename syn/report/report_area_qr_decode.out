@@ -3,30 +3,30 @@
 Report : area
 Design : qr_decode
 Version: R-2020.09-SP5
-Date   : Wed Nov 17 14:38:05 2021
+Date   : Fri Nov 19 21:57:38 2021
 ****************************************
 
 Library(s) Used:
 
     saed32hvt_ss0p95v125c (File: /usr/cadtool/SAED32_EDK/lib/stdcell_hvt/db_nldm/saed32hvt_ss0p95v125c.db)
 
-Number of ports:                         1739
-Number of nets:                         21136
-Number of cells:                        18671
-Number of combinational cells:          16679
-Number of sequential cells:              1829
+Number of ports:                         1763
+Number of nets:                         26153
+Number of cells:                        23994
+Number of combinational cells:          21961
+Number of sequential cells:              1863
 Number of macros/black boxes:               0
-Number of buf/inv:                       2165
-Number of references:                     138
+Number of buf/inv:                       3527
+Number of references:                     141
 
-Combinational area:              35671.906212
-Buf/Inv area:                     2813.628232
-Noncombinational area:           12295.486921
+Combinational area:              46066.650288
+Buf/Inv area:                     4675.741332
+Noncombinational area:           12459.409832
 Macro/Black Box area:                0.000000
-Net Interconnect area:           13826.406127
+Net Interconnect area:           14223.932361
 
-Total cell area:                 47967.393134
-Total area:                      61793.799260
+Total cell area:                 58526.060120
+Total area:                      72749.992481
 
 Hierarchical area distribution
 ------------------------------
@@ -35,14 +35,14 @@ Hierarchical area distribution
                                   -------------------  ------------------------------ 
 Hierarchical cell                 Absolute    Percent  Combi-      Noncombi-   Black-
                                   Total       Total    national    national    boxes   Design
---------------------------------  ----------  -------  ----------  ----------  ------  -------------------------------------------------
-qr_decode                         47967.3931    100.0   6250.9258   6353.0918  0.0000  qr_decode
-aa1                                 436.1111      0.9    436.1111      0.0000  0.0000  antilog_mydesign_21
-aa2                                 436.1111      0.9    436.1111      0.0000  0.0000  antilog_mydesign_20
-aa3                                 436.1111      0.9    436.1111      0.0000  0.0000  antilog_mydesign_19
-aa4                                 436.1111      0.9    436.1111      0.0000  0.0000  antilog_mydesign_18
-aaa                                 436.6194      0.9    436.6194      0.0000  0.0000  antilog_mydesign_17
-add_u1                               96.0664      0.2     96.0664      0.0000  0.0000  add_gf_mydesign_0
+--------------------------------  ----------  -------  ----------  ----------  ------  ------------------------------------------------
+qr_decode                         58526.0601    100.0   7749.8672   6451.9538  0.0000  qr_decode
+aa1                                 434.8404      0.7    434.8404      0.0000  0.0000  antilog_mydesign_21
+aa2                                 434.8404      0.7    434.8404      0.0000  0.0000  antilog_mydesign_20
+aa3                                 434.8404      0.7    434.8404      0.0000  0.0000  antilog_mydesign_19
+aa4                                 434.8404      0.7    434.8404      0.0000  0.0000  antilog_mydesign_18
+aaa                                 526.3322      0.9    526.3322      0.0000  0.0000  antilog_mydesign_17
+add_u1                              256.9396      0.4    256.9396      0.0000  0.0000  add_gf_mydesign_0
 clk_gate_code_reg                     8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_40
 clk_gate_code_reg_0                   8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_39
 clk_gate_code_reg_1                   8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_38
@@ -122,8 +122,8 @@ clk_gate_syndrome_reg_4_              8.6409      0.0      3.5580      5.0829  0
 clk_gate_syndrome_reg_5_              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_68
 clk_gate_syndrome_reg_6_              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_67
 clk_gate_syndrome_reg_7_              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_66
-epu1                               1565.2729      3.3    648.8296    421.1166  0.0000  error_position
-epu1/anti1                          434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_16
+epu1                               1716.9969      2.9    716.4319    421.1166  0.0000  error_position
+epu1/anti1                          518.9621      0.9    518.9621      0.0000  0.0000  antilog_mydesign_16
 epu1/clk_gate_error_count_reg         8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_error_position_mydesign_1
 epu1/clk_gate_result_reg_0_           8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_error_position_mydesign_5
 epu1/clk_gate_result_reg_1_           8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_error_position_mydesign_4
@@ -133,68 +133,76 @@ epu1/clk_gate_try_i_2_reg             8.6409      0.0      3.5580      5.0829  0
 epu1/clk_gate_try_i_reg               8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_error_position_mydesign_0
 ssu1                                 63.2819      0.1     63.2819      0.0000  0.0000  add_gf_mydesign_2
 ssu2                                 68.3647      0.1     68.3647      0.0000  0.0000  add_gf_mydesign_1
-sys1                              28250.6474     58.9   1231.0735   3057.3524  0.0000  systolic
-sys1/antiu1                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_15
-sys1/antiu2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_14
-sys1/antiu3                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_13
-sys1/antiu4                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_12
-sys1/antiu5                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_11
-sys1/antiu6                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_10
+sys1                              36358.3495     62.1   2878.6891   3057.3524  0.0000  systolic
+sys1/antiu1                         533.9566      0.9    533.9566      0.0000  0.0000  antilog_mydesign_15
+sys1/antiu2                         560.3875      1.0    560.3875      0.0000  0.0000  antilog_mydesign_14
+sys1/antiu3                         527.0947      0.9    527.0947      0.0000  0.0000  antilog_mydesign_13
+sys1/antiu4                         528.3654      0.9    528.3654      0.0000  0.0000  antilog_mydesign_12
+sys1/antiu5                         537.5146      0.9    537.5146      0.0000  0.0000  antilog_mydesign_11
+sys1/antiu6                         535.2273      0.9    535.2273      0.0000  0.0000  antilog_mydesign_10
 sys1/clk_gate_sigma_1_reg             8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_systolic_mydesign_0
 sys1/clk_gate_sigma_2_reg             8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_systolic_mydesign_3
 sys1/clk_gate_sigma_3_reg             8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_systolic_mydesign_2
 sys1/clk_gate_sigma_4_reg             8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_systolic_mydesign_1
-sys1/logu1                          697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_16
-sys1/logu2                          697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_15
-sys1/logu3                          697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_14
-sys1/p11                            900.9405      1.9    150.1991     52.8620  0.0000  circle_mydesign_3
-sys1/p11/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_13
-sys1/p12                           1539.8585      3.2    292.5197    112.3317  0.0000  rect_mydesign_9
-sys1/p12/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_12
-sys1/p12/u2                         437.1277      0.9    437.1277      0.0000  0.0000  antilog_mydesign_9
-sys1/p13                           1536.3005      3.2    291.2490    112.3317  0.0000  rect_mydesign_8
-sys1/p13/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_11
-sys1/p13/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_8
-sys1/p14                           1538.3336      3.2    292.7739    112.3317  0.0000  rect_mydesign_7
-sys1/p14/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_10
-sys1/p14/u2                         435.3487      0.9    435.3487      0.0000  0.0000  antilog_mydesign_7
-sys1/p15                           1533.7591      3.2    288.7076    112.3317  0.0000  rect_mydesign_6
-sys1/p15/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_9
-sys1/p15/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_6
-sys1/p21                            905.0068      1.9    150.9615     52.8620  0.0000  circle_mydesign_2
-sys1/p21/u1                         701.1833      1.5    701.1833      0.0000  0.0000  log_mydesign_8
-sys1/p22                           1539.0961      3.2    292.7739    112.3317  0.0000  rect_mydesign_5
-sys1/p22/u1                         699.1502      1.5    699.1502      0.0000  0.0000  log_mydesign_7
-sys1/p22/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_5
-sys1/p23                           1549.2618      3.2    301.6689    112.3317  0.0000  rect_mydesign_4
-sys1/p23/u1                         700.4209      1.5    700.4209      0.0000  0.0000  log_mydesign_6
-sys1/p23/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_4
-sys1/p24                           1538.0795      3.2    293.0280    112.3317  0.0000  rect_mydesign_3
-sys1/p24/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_5
-sys1/p24/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_3
-sys1/p31                            909.0731      1.9    157.0610     52.8620  0.0000  circle_mydesign_1
-sys1/p31/u1                         699.1502      1.5    699.1502      0.0000  0.0000  log_mydesign_4
-sys1/p32                           1549.5160      3.2    301.9231    112.3317  0.0000  rect_mydesign_2
-sys1/p32/u1                         700.4209      1.5    700.4209      0.0000  0.0000  log_mydesign_3
-sys1/p32/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_2
-sys1/p33                           1538.0795      3.2    293.0280    112.3317  0.0000  rect_mydesign_1
-sys1/p33/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_2
-sys1/p33/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_1
-sys1/p41                            903.4819      1.9    150.1991     52.8620  0.0000  circle_mydesign_0
-sys1/p41/u1                         700.4209      1.5    700.4209      0.0000  0.0000  log_mydesign_1
-sys1/p42                           1744.1903      3.6    499.1388    112.3317  0.0000  rect_mydesign_0
-sys1/p42/u1                         697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_0
-sys1/p42/u2                         434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_0
-u1                                 1323.3278      2.8    630.5313    641.2053  0.0000  detect_rotation
-u1/clk_gate_mode_reg                  8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_4
-u1/clk_gate_position_reg              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_3
-u1/clk_gate_position_reg_0            8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_2
-u1/clk_gate_sram_raddr_reg            8.3868      0.0      3.3039      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_0_1
-u1/clk_gate_state_reg                 8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_0
-u1/clk_gate_y_cnt_reg                 8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_1
-u2                                  697.8794      1.5    697.8794      0.0000  0.0000  log_mydesign_17
-u3                                  434.8404      0.9    434.8404      0.0000  0.0000  antilog_mydesign_22
---------------------------------  ----------  -------  ----------  ----------  ------  -------------------------------------------------
-Total                                                  35671.9062  12295.4869  0.0000
+sys1/logu1                          865.6145      1.5    865.6145      0.0000  0.0000  log_mydesign_16
+sys1/logu2                          912.8853      1.6    912.8853      0.0000  0.0000  log_mydesign_15
+sys1/logu3                          929.4046      1.6    929.4046      0.0000  0.0000  log_mydesign_14
+sys1/p11                           1058.2556      1.8    160.3649     52.8620  0.0000  circle_mydesign_3
+sys1/p11/u1                         845.0288      1.4    845.0288      0.0000  0.0000  log_mydesign_13
+sys1/p12                           1897.9474      3.2    347.9231    112.3317  0.0000  rect_mydesign_9
+sys1/p12/u1                         914.4101      1.6    914.4101      0.0000  0.0000  log_mydesign_12
+sys1/p12/u2                         523.2825      0.9    523.2825      0.0000  0.0000  antilog_mydesign_9
+sys1/p13                           1898.7099      3.2    309.2932    112.3317  0.0000  rect_mydesign_8
+sys1/p13/u1                         912.6311      1.6    912.6311      0.0000  0.0000  log_mydesign_11
+sys1/p13/u2                         564.4538      1.0    564.4538      0.0000  0.0000  antilog_mydesign_8
+sys1/p14                           1943.6933      3.3    314.6303    114.3648  0.0000  rect_mydesign_7
+sys1/p14/u1                         910.3438      1.6    910.3438      0.0000  0.0000  log_mydesign_10
+sys1/p14/u2                         604.3544      1.0    604.3544      0.0000  0.0000  antilog_mydesign_7
+sys1/p15                           1836.1904      3.1    326.3209    112.3317  0.0000  rect_mydesign_6
+sys1/p15/u1                         871.4598      1.5    871.4598      0.0000  0.0000  log_mydesign_9
+sys1/p15/u2                         526.0781      0.9    526.0781      0.0000  0.0000  antilog_mydesign_6
+sys1/p21                           1263.3498      2.2    296.5860     52.8620  0.0000  circle_mydesign_2
+sys1/p21/u1                         913.9018      1.6    913.9018      0.0000  0.0000  log_mydesign_8
+sys1/p22                           2080.9311      3.6    554.2881    112.3317  0.0000  rect_mydesign_5
+sys1/p22/u1                         907.5482      1.6    907.5482      0.0000  0.0000  log_mydesign_7
+sys1/p22/u2                         506.7631      0.9    506.7631      0.0000  0.0000  antilog_mydesign_5
+sys1/p23                           1850.9308      3.2    353.5143    112.3317  0.0000  rect_mydesign_4
+sys1/p23/u1                         879.0841      1.5    879.0841      0.0000  0.0000  log_mydesign_6
+sys1/p23/u2                         506.0007      0.9    506.0007      0.0000  0.0000  antilog_mydesign_4
+sys1/p24                           1941.6602      3.3    424.9288    112.3317  0.0000  rect_mydesign_3
+sys1/p24/u1                         900.9405      1.5    900.9405      0.0000  0.0000  log_mydesign_5
+sys1/p24/u2                         503.4593      0.9    503.4593      0.0000  0.0000  antilog_mydesign_3
+sys1/p31                           1285.7145      2.2    297.0943     52.8620  0.0000  circle_mydesign_1
+sys1/p31/u1                         935.7582      1.6    935.7582      0.0000  0.0000  log_mydesign_4
+sys1/p32                           2074.8316      3.5    575.6362    112.3317  0.0000  rect_mydesign_2
+sys1/p32/u1                         883.4046      1.5    883.4046      0.0000  0.0000  log_mydesign_3
+sys1/p32/u2                         503.4593      0.9    503.4593      0.0000  0.0000  antilog_mydesign_2
+sys1/p33                           1998.8426      3.4    456.9509    112.3317  0.0000  rect_mydesign_1
+sys1/p33/u1                         926.1008      1.6    926.1008      0.0000  0.0000  log_mydesign_2
+sys1/p33/u2                         503.4593      0.9    503.4593      0.0000  0.0000  antilog_mydesign_1
+sys1/p41                           1339.3389      2.3    297.8568     52.8620  0.0000  circle_mydesign_0
+sys1/p41/u1                         988.6202      1.7    988.6202      0.0000  0.0000  log_mydesign_1
+sys1/p42                           1986.8978      3.4    538.5311    112.3317  0.0000  rect_mydesign_0
+sys1/p42/u1                         901.1946      1.5    901.1946      0.0000  0.0000  log_mydesign_0
+sys1/p42/u2                         434.8404      0.7    434.8404      0.0000  0.0000  antilog_mydesign_0
+u1                                 1446.8418      2.5    662.2993    663.5700  0.0000  detect_rotation
+u1/clk_gate_buffer_reg                8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_12
+u1/clk_gate_buffer_reg_0              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_11
+u1/clk_gate_buffer_reg_1              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_10
+u1/clk_gate_buffer_reg_2              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_9
+u1/clk_gate_buffer_reg_3              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_8
+u1/clk_gate_min_col_reg               8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_3
+u1/clk_gate_mode_reg                  8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_6
+u1/clk_gate_position_reg              8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_5
+u1/clk_gate_position_reg_0            8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_4
+u1/clk_gate_real_state_reg            8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_0
+u1/clk_gate_state_reg                 8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_13
+u1/clk_gate_x_cnt_reg                 8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_7
+u1/clk_gate_x_reg                     8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_2
+u1/clk_gate_y_reg                     8.6409      0.0      3.5580      5.0829  0.0000  SNPS_CLOCK_GATE_HIGH_detect_rotation_mydesign_1
+u2                                  923.5593      1.6    923.5593      0.0000  0.0000  log_mydesign_17
+u3                                  541.5809      0.9    541.5809      0.0000  0.0000  antilog_mydesign_22
+--------------------------------  ----------  -------  ----------  ----------  ------  ------------------------------------------------
+Total                                                  46066.6503  12459.4098  0.0000
 
 1
