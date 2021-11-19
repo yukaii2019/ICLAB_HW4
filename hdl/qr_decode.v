@@ -21,22 +21,26 @@ parameter [399:0] mask_pattern7 = 400'b10101010101010100001110001110001100011100
 
 
 
-localparam [3:0] IDLE = 0;
-localparam [3:0] DETECT_POSITION_AND_ROTATION = 1;
-localparam [3:0] FIND_MASK_PATTERN = 2;
-localparam [3:0] DE_MASKING_1 = 3;
-localparam [3:0] DE_MASKING_2 = 4;
-localparam [3:0] DE_MASKING_3 = 5;
-localparam [3:0] CALCULATE_SYNDROME_1 = 6;
-localparam [3:0] CALCULATE_SYNDROME_2 = 7;
-localparam [3:0] SOLVE_EQUATION = 8;
-localparam [3:0] FIND_ERROR_POSITION = 9;
-localparam [3:0] SOLVE_EQUATION_2 = 10;
-localparam [3:0] FIX_ERROR = 11;
-localparam [3:0] OUTPUT = 12;
-localparam [3:0] FINISH = 13;
+localparam [4:0] IDLE = 0;
+localparam [4:0] DETECT_POSITION_AND_ROTATION = 1;
+localparam [4:0] FIND_MASK_PATTERN = 2;
+localparam [4:0] DE_MASKING_1 = 3;
+localparam [4:0] DE_MASKING_2 = 4;
+localparam [4:0] DE_MASKING_3 = 5;
+localparam [4:0] CALCULATE_SYNDROME_1 = 6;
+localparam [4:0] CALCULATE_SYNDROME_2 = 7;
+localparam [4:0] SOLVE_EQUATION = 8;
+localparam [4:0] FIND_ERROR_POSITION = 9;
+localparam [4:0] SOLVE_EQUATION_2 = 10;
+localparam [4:0] FIX_ERROR = 11;
+localparam [4:0] OUTPUT = 12;
+localparam [4:0] FINISH = 13;
+localparam [4:0] DE_MASKING_4 = 14;
+localparam [4:0] DE_MASKING_5 = 15;
+localparam [4:0] BLANK = 16;
+localparam [4:0] BLANK2 = 17;
 
-localparam [3:0] DE_MASKING_4 = 14;
+
 
 wire pos_rot_finish;
 wire [2:0] mode;
@@ -68,8 +72,8 @@ detect_rotation u1(
 
 
 
-reg [3:0] state;
-reg [3:0] state_n;
+reg [4:0] state;
+reg [4:0] state_n;
 
 reg [2:0] mask;
 reg [2:0] mask_n;
@@ -78,6 +82,12 @@ wire [2:0] real_mask;
 assign real_mask = mask ^ 3'b101;
 
 reg [11:0] mask_raddr;
+
+reg [11:0] tmp_mask_raddr;
+
+always@(posedge clk)begin
+    tmp_mask_raddr <= mask_raddr;
+end
 
 //always@(*)begin
 //    case(state)
@@ -94,8 +104,10 @@ reg [11:0] mask_raddr;
 //end
 
 always@(*)begin
-    sram_raddr = (pos_rot_finish == 0)? pos_rot_sram_raddr:mask_raddr;
+    sram_raddr = (pos_rot_finish == 0)? pos_rot_sram_raddr: tmp_mask_raddr;
 end
+
+
 
 
 reg decode_valid_n;
@@ -631,7 +643,7 @@ end
 
 integer i ;
 always@(posedge clk)begin
-    if(state == DE_MASKING_1 || state == DE_MASKING_2 || state == DE_MASKING_3 || state == DE_MASKING_4)begin
+    if(state == DE_MASKING_1 || state == DE_MASKING_2 || state == DE_MASKING_3 || state == DE_MASKING_4 || state == DE_MASKING_5)begin
         for(i = 399 ; i>0 ;i = i -1)begin
             code[i] <= code[i-1];
         end 
@@ -670,10 +682,12 @@ always@(*)begin
             gf_cnt_y_n = 0;
         end
         DETECT_POSITION_AND_ROTATION:begin
-            state_n = (pos_rot_finish) ? FIND_MASK_PATTERN : DETECT_POSITION_AND_ROTATION;
+            //state_n = (pos_rot_finish) ? FIND_MASK_PATTERN : DETECT_POSITION_AND_ROTATION;
+            state_n = (pos_rot_finish) ? BLANK : DETECT_POSITION_AND_ROTATION;
             mask_raddr = (mode == 1 || mode == 4)? position+8*64+2 : position + 16*64+22;
             mask_n = 0;
-            mask_cnt_n = 1;
+            //mask_cnt_n = 1;
+            mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 9;
             y_cnt_n = 0;
@@ -682,14 +696,43 @@ always@(*)begin
             gf_cnt_n = 43;
             gf_cnt_y_n = 0;
         end
+        BLANK:begin
+            state_n = FIND_MASK_PATTERN;
+            mask_raddr = (mode == 1 || mode == 4)? position+8*64+2 + 1 : position + 16*64+22 - 1 ;
+            mask_n = 0;
+            //mask_cnt_n = 2;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 9;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n = 43;
+            gf_cnt_y_n = 0;     
+        end
         FIND_MASK_PATTERN:begin
-            state_n = (mask_cnt == 3)? DE_MASKING_1 : FIND_MASK_PATTERN;
-            mask_raddr = (mask_cnt != 3) ? (mode == 1 || mode == 4)? position+8*64+2 + mask_cnt : position + 16*64+22 - mask_cnt : position + 64*real_y_cnt + real_x_cnt ;
+            //state_n = (mask_cnt == 2)? DE_MASKING_1 : FIND_MASK_PATTERN;
+            state_n = (mask_cnt == 2)? BLANK2 : FIND_MASK_PATTERN;
+            //mask_raddr = (mask_cnt != 2) ? (mode == 1 || mode == 4)? position+8*64+2 + mask_cnt : position + 16*64+22 - mask_cnt : position + 64*real_y_cnt + real_x_cnt ;
+            mask_raddr = (mask_cnt != 2) ? (mode == 1 || mode == 4)? position+8*64+2 + 2 : position + 16*64+22 - 2 : position + 64*real_y_cnt + real_x_cnt ;
             mask_n = sram_rdata_new;
             mask_cnt_n = mask_cnt + 1;
             code_n = 0;
             //x_cnt_n = 9;
-            x_cnt_n = (mask_cnt == 3)? 10 : 9;
+            x_cnt_n = (mask_cnt == 2)? 10 : 9;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n = 43;
+            gf_cnt_y_n = 0;
+        end
+        BLANK2:begin
+            state_n = DE_MASKING_1;
+            mask_raddr =  position + 64*real_y_cnt + real_x_cnt ;
+            mask_n = 0;
+            mask_cnt_n = 0;
+            code_n = 0;
+            x_cnt_n = 11;
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
@@ -767,6 +810,29 @@ always@(*)begin
             gf_cnt_y_n = 0;
         end
         DE_MASKING_4:begin
+            state_n = DE_MASKING_5;
+            mask_raddr = 0;
+            mask_n = 0;
+            mask_cnt_n = 0;
+            case(real_mask)
+                0:begin code_n = sram_rdata_new ^ mask_pattern0[read_cnt]; end
+                1:begin code_n = sram_rdata_new ^ mask_pattern1[read_cnt]; end
+                2:begin code_n = sram_rdata_new ^ mask_pattern2[read_cnt]; end
+                3:begin code_n = sram_rdata_new ^ mask_pattern3[read_cnt]; end
+                4:begin code_n = sram_rdata_new ^ mask_pattern4[read_cnt]; end
+                5:begin code_n = sram_rdata_new ^ mask_pattern5[read_cnt]; end
+                6:begin code_n = sram_rdata_new ^ mask_pattern6[read_cnt]; end
+                7:begin code_n = sram_rdata_new ^ mask_pattern7[read_cnt]; end
+                default:begin code_n = 0; end
+            endcase
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n = 43;
+            gf_cnt_y_n = 0;  
+        end
+        DE_MASKING_5:begin
             state_n = CALCULATE_SYNDROME_2;
             mask_raddr = 0;
             mask_n = 0;
@@ -789,6 +855,7 @@ always@(*)begin
             gf_cnt_n = 43;
             gf_cnt_y_n = 0;  
         end
+
         CALCULATE_SYNDROME_1:begin
             state_n = CALCULATE_SYNDROME_2;
             mask_raddr = 0;
