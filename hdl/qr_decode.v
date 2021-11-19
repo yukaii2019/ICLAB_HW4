@@ -36,21 +36,29 @@ localparam [3:0] FIX_ERROR = 11;
 localparam [3:0] OUTPUT = 12;
 localparam [3:0] FINISH = 13;
 
-wire enable;
+localparam [3:0] DE_MASKING_4 = 14;
+
 wire pos_rot_finish;
 wire [2:0] mode;
 wire [11:0] position;
 
-assign enable = 1;
 
 wire [11:0] pos_rot_sram_raddr;
+
+
+reg sram_rdata_new;
+reg qr_decode_start_new;
+always@(posedge clk)begin
+    sram_rdata_new <= sram_rdata;
+    qr_decode_start_new <= qr_decode_start;
+end
+
 
 
 detect_rotation u1(
 .clk(clk),
 .srstn(srstn),
-.enable(enable),
-.data(sram_rdata),
+.sram_rdata(sram_rdata_new),
 .sram_raddr(pos_rot_sram_raddr),
 .mode(mode),
 .position(position),
@@ -71,19 +79,24 @@ assign real_mask = mask ^ 3'b101;
 
 reg [11:0] mask_raddr;
 
+//always@(*)begin
+//    case(state)
+//        DETECT_POSITION_AND_ROTATION:begin
+//            sram_raddr = pos_rot_sram_raddr;
+//        end
+//        FIND_MASK_PATTERN:begin
+//            sram_raddr = mask_raddr;
+//        end
+//        default:begin
+//            sram_raddr = mask_raddr;
+//        end
+//    endcase
+//end
+
 always@(*)begin
-    case(state)
-        DETECT_POSITION_AND_ROTATION:begin
-            sram_raddr = pos_rot_sram_raddr;
-        end
-        FIND_MASK_PATTERN:begin
-            sram_raddr = mask_raddr;
-        end
-        default:begin
-            sram_raddr = mask_raddr;
-        end
-    endcase
+    sram_raddr = (pos_rot_finish == 0)? pos_rot_sram_raddr:mask_raddr;
 end
+
 
 reg decode_valid_n;
 reg [7:0] decode_jis8_code_n;
@@ -101,8 +114,11 @@ reg [4:0] x_cnt_n;
 reg [4:0] y_cnt;
 reg [4:0] y_cnt_n;
 
-wire [4:0] real_x_cnt;
-wire [4:0] real_y_cnt;
+//wire [4:0] real_x_cnt;
+//wire [4:0] real_y_cnt;
+
+reg [4:0] real_x_cnt;
+reg [4:0] real_y_cnt;
 
 reg [8:0] read_cnt;
 reg [8:0] read_cnt_n;
@@ -131,8 +147,33 @@ wire [7:0] sigma_1, sigma_2, sigma_3, sigma_4;
 
 assign length = {c_correct[0][3:0],c_correct[1][7:4]};
 
-assign real_x_cnt = (mode == 1) ? x_cnt : (mode == 2)? y_cnt : (mode == 3)? 24-x_cnt : 24-y_cnt; 
-assign real_y_cnt = (mode == 1) ? y_cnt : (mode == 2)? 24-x_cnt : (mode == 3)? 24-y_cnt : x_cnt; 
+//assign real_x_cnt = (mode == 1) ? x_cnt : (mode == 2)? y_cnt : (mode == 3)? 24-x_cnt : 24-y_cnt; 
+//assign real_y_cnt = (mode == 1) ? y_cnt : (mode == 2)? 24-x_cnt : (mode == 3)? 24-y_cnt : x_cnt; 
+
+always@(*)begin
+    case(mode)
+        1: begin
+            real_x_cnt = x_cnt;
+            real_y_cnt = y_cnt;
+        end
+        2: begin
+            real_x_cnt = y_cnt;
+            real_y_cnt = 24 - x_cnt;
+        end
+        3: begin
+            real_x_cnt = 24 - x_cnt;
+            real_y_cnt = 24 - y_cnt;
+        end
+        4: begin
+            real_x_cnt = 24 - y_cnt;
+            real_y_cnt = x_cnt;
+        end
+        default:begin
+            real_x_cnt = x_cnt;
+            real_y_cnt = y_cnt;
+        end
+    endcase
+end
 
 
 
@@ -590,7 +631,7 @@ end
 
 integer i ;
 always@(posedge clk)begin
-    if(state == DE_MASKING_1 || state == DE_MASKING_2 || state == DE_MASKING_3)begin
+    if(state == DE_MASKING_1 || state == DE_MASKING_2 || state == DE_MASKING_3 || state == DE_MASKING_4)begin
         for(i = 399 ; i>0 ;i = i -1)begin
             code[i] <= code[i-1];
         end 
@@ -616,7 +657,7 @@ end
 always@(*)begin
     case(state)
         IDLE:begin
-            state_n = (qr_decode_start)? DETECT_POSITION_AND_ROTATION:IDLE;
+            state_n = (qr_decode_start_new)? DETECT_POSITION_AND_ROTATION:IDLE;
             mask_raddr = 0;
             mask_n = 0;
             mask_cnt_n = 0;
@@ -630,11 +671,11 @@ always@(*)begin
         end
         DETECT_POSITION_AND_ROTATION:begin
             state_n = (pos_rot_finish) ? FIND_MASK_PATTERN : DETECT_POSITION_AND_ROTATION;
-            mask_raddr = 0;
+            mask_raddr = (mode == 1 || mode == 4)? position+8*64+2 : position + 16*64+22;
             mask_n = 0;
-            mask_cnt_n = 0;
+            mask_cnt_n = 1;
             code_n = 0;
-            x_cnt_n = 0;
+            x_cnt_n = 9;
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
@@ -642,12 +683,13 @@ always@(*)begin
             gf_cnt_y_n = 0;
         end
         FIND_MASK_PATTERN:begin
-            state_n = (mask_cnt == 2)? DE_MASKING_1 : FIND_MASK_PATTERN;
-            mask_raddr = (mode == 1 || mode == 4)? position+8*64+2 + mask_cnt : position + 16*64+22 - mask_cnt;
-            mask_n = sram_rdata;
+            state_n = (mask_cnt == 3)? DE_MASKING_1 : FIND_MASK_PATTERN;
+            mask_raddr = (mask_cnt != 3) ? (mode == 1 || mode == 4)? position+8*64+2 + mask_cnt : position + 16*64+22 - mask_cnt : position + 64*real_y_cnt + real_x_cnt ;
+            mask_n = sram_rdata_new;
             mask_cnt_n = mask_cnt + 1;
             code_n = 0;
-            x_cnt_n = 9;
+            //x_cnt_n = 9;
+            x_cnt_n = (mask_cnt == 3)? 10 : 9;
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
@@ -660,14 +702,14 @@ always@(*)begin
             mask_n = 0;
             mask_cnt_n = 0;
             case(real_mask)
-                0:begin code_n = sram_rdata ^ mask_pattern0[read_cnt]; end
-                1:begin code_n = sram_rdata ^ mask_pattern1[read_cnt]; end
-                2:begin code_n = sram_rdata ^ mask_pattern2[read_cnt]; end
-                3:begin code_n = sram_rdata ^ mask_pattern3[read_cnt]; end
-                4:begin code_n = sram_rdata ^ mask_pattern4[read_cnt]; end
-                5:begin code_n = sram_rdata ^ mask_pattern5[read_cnt]; end
-                6:begin code_n = sram_rdata ^ mask_pattern6[read_cnt]; end
-                7:begin code_n = sram_rdata ^ mask_pattern7[read_cnt]; end
+                0:begin code_n = sram_rdata_new ^ mask_pattern0[read_cnt]; end
+                1:begin code_n = sram_rdata_new ^ mask_pattern1[read_cnt]; end
+                2:begin code_n = sram_rdata_new ^ mask_pattern2[read_cnt]; end
+                3:begin code_n = sram_rdata_new ^ mask_pattern3[read_cnt]; end
+                4:begin code_n = sram_rdata_new ^ mask_pattern4[read_cnt]; end
+                5:begin code_n = sram_rdata_new ^ mask_pattern5[read_cnt]; end
+                6:begin code_n = sram_rdata_new ^ mask_pattern6[read_cnt]; end
+                7:begin code_n = sram_rdata_new ^ mask_pattern7[read_cnt]; end
                 default:begin code_n = 0; end
             endcase
             x_cnt_n = (x_cnt == 16)? (y_cnt == 8)? 0  : 9 : x_cnt + 1;
@@ -683,14 +725,14 @@ always@(*)begin
             mask_n = 0;
             mask_cnt_n = 0;
             case(real_mask)
-                0:begin code_n = sram_rdata ^ mask_pattern0[read_cnt]; end
-                1:begin code_n = sram_rdata ^ mask_pattern1[read_cnt]; end
-                2:begin code_n = sram_rdata ^ mask_pattern2[read_cnt]; end
-                3:begin code_n = sram_rdata ^ mask_pattern3[read_cnt]; end
-                4:begin code_n = sram_rdata ^ mask_pattern4[read_cnt]; end
-                5:begin code_n = sram_rdata ^ mask_pattern5[read_cnt]; end
-                6:begin code_n = sram_rdata ^ mask_pattern6[read_cnt]; end
-                7:begin code_n = sram_rdata ^ mask_pattern7[read_cnt]; end
+                0:begin code_n = sram_rdata_new ^ mask_pattern0[read_cnt]; end
+                1:begin code_n = sram_rdata_new ^ mask_pattern1[read_cnt]; end
+                2:begin code_n = sram_rdata_new ^ mask_pattern2[read_cnt]; end
+                3:begin code_n = sram_rdata_new ^ mask_pattern3[read_cnt]; end
+                4:begin code_n = sram_rdata_new ^ mask_pattern4[read_cnt]; end
+                5:begin code_n = sram_rdata_new ^ mask_pattern5[read_cnt]; end
+                6:begin code_n = sram_rdata_new ^ mask_pattern6[read_cnt]; end
+                7:begin code_n = sram_rdata_new ^ mask_pattern7[read_cnt]; end
                 default:begin code_n = 0; end
             endcase
             x_cnt_n = (x_cnt == 24)? (y_cnt == 16)? 9 : 0 : x_cnt + 1;
@@ -701,19 +743,20 @@ always@(*)begin
             gf_cnt_y_n = 0;
         end
         DE_MASKING_3:begin
-            state_n = (x_cnt == 24 && y_cnt == 24)? CALCULATE_SYNDROME_2 : DE_MASKING_3;
+            //state_n = (x_cnt == 24 && y_cnt == 24)? CALCULATE_SYNDROME_2 : DE_MASKING_3;
+            state_n = (x_cnt == 24 && y_cnt == 24)? DE_MASKING_4 : DE_MASKING_3;
             mask_raddr = position + 64*real_y_cnt + real_x_cnt;
             mask_n = 0;
             mask_cnt_n = 0;
             case(real_mask)
-                0:begin code_n = sram_rdata ^ mask_pattern0[read_cnt]; end
-                1:begin code_n = sram_rdata ^ mask_pattern1[read_cnt]; end
-                2:begin code_n = sram_rdata ^ mask_pattern2[read_cnt]; end
-                3:begin code_n = sram_rdata ^ mask_pattern3[read_cnt]; end
-                4:begin code_n = sram_rdata ^ mask_pattern4[read_cnt]; end
-                5:begin code_n = sram_rdata ^ mask_pattern5[read_cnt]; end
-                6:begin code_n = sram_rdata ^ mask_pattern6[read_cnt]; end
-                7:begin code_n = sram_rdata ^ mask_pattern7[read_cnt]; end
+                0:begin code_n = sram_rdata_new ^ mask_pattern0[read_cnt]; end
+                1:begin code_n = sram_rdata_new ^ mask_pattern1[read_cnt]; end
+                2:begin code_n = sram_rdata_new ^ mask_pattern2[read_cnt]; end
+                3:begin code_n = sram_rdata_new ^ mask_pattern3[read_cnt]; end
+                4:begin code_n = sram_rdata_new ^ mask_pattern4[read_cnt]; end
+                5:begin code_n = sram_rdata_new ^ mask_pattern5[read_cnt]; end
+                6:begin code_n = sram_rdata_new ^ mask_pattern6[read_cnt]; end
+                7:begin code_n = sram_rdata_new ^ mask_pattern7[read_cnt]; end
                 default:begin code_n = 0; end
             endcase
             x_cnt_n = (x_cnt == 24)? 9 :x_cnt + 1;
@@ -722,6 +765,29 @@ always@(*)begin
             out_cnt_n = 0;
             gf_cnt_n = 43;
             gf_cnt_y_n = 0;
+        end
+        DE_MASKING_4:begin
+            state_n = CALCULATE_SYNDROME_2;
+            mask_raddr = 0;
+            mask_n = 0;
+            mask_cnt_n = 0;
+            case(real_mask)
+                0:begin code_n = sram_rdata_new ^ mask_pattern0[read_cnt]; end
+                1:begin code_n = sram_rdata_new ^ mask_pattern1[read_cnt]; end
+                2:begin code_n = sram_rdata_new ^ mask_pattern2[read_cnt]; end
+                3:begin code_n = sram_rdata_new ^ mask_pattern3[read_cnt]; end
+                4:begin code_n = sram_rdata_new ^ mask_pattern4[read_cnt]; end
+                5:begin code_n = sram_rdata_new ^ mask_pattern5[read_cnt]; end
+                6:begin code_n = sram_rdata_new ^ mask_pattern6[read_cnt]; end
+                7:begin code_n = sram_rdata_new ^ mask_pattern7[read_cnt]; end
+                default:begin code_n = 0; end
+            endcase
+            x_cnt_n = 0;
+            y_cnt_n = 0;
+            read_cnt_n = 0;
+            out_cnt_n = 0;
+            gf_cnt_n = 43;
+            gf_cnt_y_n = 0;  
         end
         CALCULATE_SYNDROME_1:begin
             state_n = CALCULATE_SYNDROME_2;
@@ -868,8 +934,7 @@ endmodule
 module detect_rotation(
 input clk,
 input srstn,
-input enable,
-input data,
+input sram_rdata,
 output  [11:0] sram_raddr,
 output reg [2:0] mode,
 output reg [11:0] position,
@@ -897,11 +962,6 @@ localparam [3:0] FINISH = 5;
 localparam [3:0] FIND_POSITION = 6;
 
 
-reg sram_rdata;
-
-always@(posedge clk)begin
-    sram_rdata <= data;
-end
 
 reg [3:0] state;
 reg [3:0] state_n;
