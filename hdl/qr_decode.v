@@ -264,9 +264,6 @@ reg [7:0] syndrome [0:7];
 wire [7:0] tmp_s;
 
 reg [7:0] ss [0:7];
-wire [7:0] ss_n [0:1];
-add_gf ssu1 (.in1(ss[6]),.in2(8'd6),.out(ss_n[0]));
-add_gf ssu2 (.in1(ss[7]),.in2(8'd7),.out(ss_n[1]));
 
 always@(posedge clk)begin
     if(~srstn)begin
@@ -287,8 +284,10 @@ always@(posedge clk)begin
             ss[3] <= ss[3] + 3;
             ss[4] <= ss[4] + 4;
             ss[5] <= ss[5] + 5;
-            ss[6] <= ss_n[0];
-            ss[7] <= ss_n[1];
+            ss[6] <= ({1'b0,ss[6]} + 8'd6 >= 255)? ss[6] + 7 : ss[6] + 6;
+            ss[7] <= ({1'b0,ss[7]} + 8'd7 >= 255)? ss[7] + 8 : ss[7] + 7;
+            //ss[6] <= ss_n[0];
+            //ss[7] <= ss_n[1];
         end
         else begin
             ss[0] <= ss[0];
@@ -305,7 +304,9 @@ end
 
 reg [2:0]  gf_cnt_y, gf_cnt_y_n;
 
-add_gf add_u1(.in1(log_out),.in2(ss[gf_cnt_y]),.out(antilog_in));
+//add_gf add_u1(.in1(log_out),.in2(ss[gf_cnt_y]),.out(antilog_in));
+assign antilog_in = ({1'b0,log_out} + {1'b0, ss[gf_cnt_y]} >= 255)? log_out + ss[gf_cnt_y] + 1: log_out + ss[gf_cnt_y]; 
+
 
 always@(posedge clk)begin
     if(~srstn)begin
@@ -1378,6 +1379,9 @@ always@(*)begin
 end
 
 endmodule
+
+
+
 module systolic(
 input [7:0] in1,
 input [7:0] in2,
@@ -1396,7 +1400,7 @@ output reg [7:0] sigma_4,
 output reg finish
 
 );
-wire finish_n;
+
 
 wire[7:0] w_p11_p12; 
 wire[7:0] w_p12_p13; 
@@ -1404,49 +1408,16 @@ wire[7:0] w_p13_p14;
 wire[7:0] w_p14_p15; 
 wire[7:0] w_p15_p16; 
 
-wire[7:0] w_p21_p22;
-wire[7:0] w_p22_p23;
-wire[7:0] w_p23_p24;
-wire[7:0] w_p24_p25;
-
-wire[7:0] w_p31_p32;
-wire[7:0] w_p32_p33;
-wire[7:0] w_p33_p34;
-
-wire[7:0] w_p41_p42;
-wire[7:0] w_p42_p43;
-
 wire s_p11_p12;
 wire s_p12_p13;
 wire s_p13_p14;
 wire s_p14_p15;
 wire s_p15_p16;
 
-wire s_p21_p22;
-wire s_p22_p23;
-wire s_p23_p24;
-wire s_p24_p25;
-
-wire s_p31_p32;
-wire s_p32_p33;
-wire s_p33_p34;
-
-wire s_p41_p42;
-wire s_p42_p43;
-
 wire[7:0] w_p12_p21;
 wire[7:0] w_p13_p22;
 wire[7:0] w_p14_p23;
 wire[7:0] w_p15_p24;
-
-wire[7:0] w_p22_p31; 
-wire[7:0] w_p23_p32; 
-wire[7:0] w_p24_p33; 
-
-wire[7:0] w_p32_p41; 
-wire[7:0] w_p33_p42; 
-
-wire[7:0] w_p42_p51; 
 
 wire[7:0] in_g_p11;
 wire[7:0] in_g_p12;
@@ -1454,75 +1425,58 @@ wire[7:0] in_g_p13;
 wire[7:0] in_g_p14;
 wire[7:0] in_g_p15;
 
-wire[7:0] in_g_p21;
-wire[7:0] in_g_p22;
-wire[7:0] in_g_p23;
-wire[7:0] in_g_p24;
+reg [7:0] in1_new,in2_new,in3_new, in4_new, in5_new;
+reg [7:0] w_p12_p21_delay [0:1];
+reg [7:0] w_p13_p22_delay [0:1];
+reg [7:0] w_p14_p23_delay [0:1];
+reg [7:0] w_p15_p24_delay [0:1];
 
-wire[7:0] in_g_p31;
-wire[7:0] in_g_p32;
-wire[7:0] in_g_p33;
+reg [7:0] in_g_p11_delay[0:1];
+reg [7:0] in_g_p12_delay[0:1];
 
-wire[7:0] in_g_p41;
-wire[7:0] in_g_p42;
+reg [7:0] eq1[0:4];
+reg [7:0] eq2[0:3];
+reg [7:0] eq3[0:2];
 
-wire [7:0] w_p12_p21_tmp;
-wire [7:0] w_p13_p22_tmp;
-wire [7:0] w_p14_p23_tmp;
-wire [7:0] w_p15_p24_tmp;
-
-//circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
-//rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21),.in_g(in_g_p12));
-//rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22),.in_g(in_g_p13));
-//rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23),.in_g(in_g_p14));
-//rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24),.in_g(in_g_p15));
-
-circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
-rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21_tmp),.in_g(in_g_p12));
-rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22_tmp),.in_g(in_g_p13));
-rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23_tmp),.in_g(in_g_p14));
-rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24_tmp),.in_g(in_g_p15));
-
-
-
-
-reg [7:0] in1_d1, in1_d2;
-reg [7:0] in2_d1, in2_d2;
-reg [7:0] in3_d1, in3_d2;
-reg [7:0] in5_d1;
-
-always@(posedge clk)begin
-    in1_d1 <= in1;
-    in1_d2 <= in1_d1;
-    
-    in2_d1 <= in2;
-    in2_d2 <= in2_d1;
-    
-    in3_d1 <= in3;
-    in3_d2 <= in3_d1;
-    
-    in5_d1 <= in5;
-end
-
-assign w_p12_p21 = (mode == 0) ? w_p12_p21_tmp : in1_d2;
-assign w_p13_p22 = (mode == 0) ? w_p13_p22_tmp : in2_d2;
-assign w_p14_p23 = (mode == 0) ? w_p14_p23_tmp : in3_d2;
-assign w_p15_p24 = (mode == 0) ? w_p15_p24_tmp : in5_d1;
-
-circle p21 (.clk(clk),.in(w_p12_p21),.out(w_p21_p22),.sign(s_p21_p22),.in_g(in_g_p21));
-rect   p22 (.clk(clk),.in(w_p13_p22),.in_c(w_p21_p22),.in_sign(s_p21_p22),.out_c(w_p22_p23),.out_sign(s_p22_p23),.out(w_p22_p31),.in_g(in_g_p22));
-rect   p23 (.clk(clk),.in(w_p14_p23),.in_c(w_p22_p23),.in_sign(s_p22_p23),.out_c(w_p23_p24),.out_sign(s_p23_p24),.out(w_p23_p32),.in_g(in_g_p23));
-rect   p24 (.clk(clk),.in(w_p15_p24),.in_c(w_p23_p24),.in_sign(s_p23_p24),.out_c(w_p24_p25),.out_sign(s_p24_p25),.out(w_p24_p33),.in_g(in_g_p24));
-
-circle p31 (.clk(clk),.in(w_p22_p31),.out(w_p31_p32),.sign(s_p31_p32),.in_g(in_g_p31));
-rect   p32 (.clk(clk),.in(w_p23_p32),.in_c(w_p31_p32),.in_sign(s_p31_p32),.out_c(w_p32_p33),.out_sign(s_p32_p33),.out(w_p32_p41),.in_g(in_g_p32));
-rect   p33 (.clk(clk),.in(w_p24_p33),.in_c(w_p32_p33),.in_sign(s_p32_p33),.out_c(w_p33_p34),.out_sign(s_p33_p34),.out(w_p33_p42),.in_g(in_g_p33));
-
-
-circle p41 (.clk(clk),.in(w_p32_p41),.out(w_p41_p42),.sign(s_p41_p42),.in_g(in_g_p41));
-rect   p42 (.clk(clk),.in(w_p33_p42),.in_c(w_p41_p42),.in_sign(s_p41_p42),.out_c(w_p42_p43),.out_sign(s_p42_p43),.out(w_p42_p51),.in_g(in_g_p42));
 
 reg [4:0] cnt;
+
+//wire [7:0] eq1_0 = eq1[0];
+//wire [7:0] eq1_1 = eq1[1];
+//wire [7:0] eq1_2 = eq1[2];
+//wire [7:0] eq1_3 = eq1[3];
+//wire [7:0] eq1_4 = eq1[4];
+//
+//wire [7:0] eq2_0 = eq2[0];
+//wire [7:0] eq2_1 = eq2[1];
+//wire [7:0] eq2_2 = eq2[2];
+//wire [7:0] eq2_3 = eq2[3];
+//
+//wire [7:0] eq3_0 = eq3[0];
+//wire [7:0] eq3_1 = eq3[1];
+//wire [7:0] eq3_2 = eq3[2];
+
+
+reg [7:0] sigma_1_n, sigma_2_n, sigma_3_n, sigma_4_n;
+
+
+reg  [7:0] log_new_in , anti_new_in ;
+reg  [7:0] log_new_in_n , anti_new_in_n ;
+wire [7:0] log_new_out, anti_new_out;
+
+wire finish_n;
+
+reg [7:0] in1_delay [0:3];
+reg [7:0] in2_delay [0:3];
+reg [7:0] in3_delay [0:3];
+reg [7:0] in5_delay [0:2];
+
+
+circle p11 (.clk(clk),.in(in1_new),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
+rect   p12 (.clk(clk),.in(in2_new),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21),.in_g(in_g_p12));
+rect   p13 (.clk(clk),.in(in3_new),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22),.in_g(in_g_p13));
+rect   p14 (.clk(clk),.in(in4_new),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23),.in_g(in_g_p14));
+rect   p15 (.clk(clk),.in(in5_new),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24),.in_g(in_g_p15));
 
 always@(posedge clk)begin
     if(~srstn)begin
@@ -1539,149 +1493,90 @@ always@(posedge clk)begin
     end
 end
 
-reg [7:0] sigma_1_n, sigma_2_n, sigma_3_n, sigma_4_n;
-
-
-
-reg [7:0] in_g_p41_delay1;
-
-reg [7:0] in_g_p32_delay1;
-reg [7:0] in_g_p32_delay2;
-reg [7:0] w_p24_p33_delay1;
-reg [7:0] in_g_p31_delay1;
-reg [7:0] in_g_p31_delay2;
-reg [7:0] in_g_p31_delay3;
-
-reg [7:0] log_u1_in;
-wire [7:0] log_u1_out;
-reg [7:0] anti_u1_in;
-wire [7:0] anti_u1_out;
-
-log logu1(.in(log_u1_in),.out(log_u1_out));
-antilog antiu1(.in(anti_u1_in),.out(anti_u1_out));
-
-reg [7:0] log_u2_in;
-wire [7:0] log_u2_out;
-reg [7:0] anti_u2_in;
-wire [7:0] anti_u2_out;
-reg [7:0] anti_u3_in;
-wire [7:0] anti_u3_out;
-
-log logu2(.in(log_u2_in),.out(log_u2_out));
-antilog antiu2(.in(anti_u2_in),.out(anti_u2_out));
-antilog antiu3(.in(anti_u3_in),.out(anti_u3_out));
-
-reg [7:0] w_p15_p24_delay1;
-reg [7:0] w_p15_p24_delay2;
-reg [7:0] in_g_p23_delay1;
-reg [7:0] in_g_p23_delay2;
-reg [7:0] in_g_p23_delay3;
-reg [7:0] in_g_p22_delay1;
-reg [7:0] in_g_p22_delay2;
-reg [7:0] in_g_p22_delay3;
-reg [7:0] in_g_p22_delay4;
-reg [7:0] in_g_p21_delay1;
-reg [7:0] in_g_p21_delay2;
-reg [7:0] in_g_p21_delay3;
-reg [7:0] in_g_p21_delay4;
-reg [7:0] in_g_p21_delay5;
-
-
-reg [7:0] log_u3_in;
-wire [7:0] log_u3_out;
-reg [7:0] anti_u4_in;
-wire [7:0] anti_u4_out;
-reg [7:0] anti_u5_in;
-wire [7:0] anti_u5_out;
-reg [7:0] anti_u6_in;
-wire [7:0] anti_u6_out;
-
-log logu3(.in(log_u3_in),.out(log_u3_out));
-antilog antiu4(.in(anti_u4_in),.out(anti_u4_out));
-antilog antiu5(.in(anti_u5_in),.out(anti_u5_out));
-antilog antiu6(.in(anti_u6_in),.out(anti_u6_out));
-
-
-reg [7:0] in5_delay1;
-reg [7:0] in5_delay2;
-reg [7:0] in5_delay3;
-reg [7:0] in_g_p14_delay1;
-reg [7:0] in_g_p14_delay2;
-reg [7:0] in_g_p14_delay3;
-reg [7:0] in_g_p14_delay4;
-reg [7:0] in_g_p13_delay1;
-reg [7:0] in_g_p13_delay2;
-reg [7:0] in_g_p13_delay3;
-reg [7:0] in_g_p13_delay4;
-reg [7:0] in_g_p13_delay5;
-reg [7:0] in_g_p12_delay1;
-reg [7:0] in_g_p12_delay2;
-reg [7:0] in_g_p12_delay3;
-reg [7:0] in_g_p12_delay4;
-reg [7:0] in_g_p12_delay5;
-reg [7:0] in_g_p12_delay6;
-reg [7:0] in_g_p11_delay1;
-reg [7:0] in_g_p11_delay2;
-reg [7:0] in_g_p11_delay3;
-reg [7:0] in_g_p11_delay4;
-reg [7:0] in_g_p11_delay5;
-reg [7:0] in_g_p11_delay6;
-reg [7:0] in_g_p11_delay7;
-
 
 always@(posedge clk)begin
-    in_g_p41_delay1 <= in_g_p41;
-    
-    in_g_p32_delay1 <= in_g_p32;
-    in_g_p32_delay2 <= in_g_p32_delay1;
-    w_p24_p33_delay1 <= w_p24_p33;
-    in_g_p31_delay1 <= in_g_p31;
-    in_g_p31_delay2 <= in_g_p31_delay1;
-    in_g_p31_delay3 <= in_g_p31_delay2;
+    in1_delay[0] <= in1; 
+    in2_delay[0] <= in2; 
+    in3_delay[0] <= in3; 
+    in5_delay[0] <= in5;
 
-    w_p15_p24_delay1 <= w_p15_p24;
-    w_p15_p24_delay2 <= w_p15_p24_delay1;
-    in_g_p23_delay1 <= in_g_p23;
-    in_g_p23_delay2 <= in_g_p23_delay1;
-    in_g_p23_delay3 <= in_g_p23_delay2;
-    in_g_p22_delay1 <= in_g_p22;
-    in_g_p22_delay2 <= in_g_p22_delay1;
-    in_g_p22_delay3 <= in_g_p22_delay2;
-    in_g_p22_delay4 <= in_g_p22_delay3;
-    in_g_p21_delay1 <= in_g_p21;
-    in_g_p21_delay2 <= in_g_p21_delay1;
-    in_g_p21_delay3 <= in_g_p21_delay2;
-    in_g_p21_delay4 <= in_g_p21_delay3;
-    in_g_p21_delay5 <= in_g_p21_delay4;
+    in1_delay[1] <= in1_delay[0];
+    in2_delay[1] <= in2_delay[0];
+    in3_delay[1] <= in3_delay[0];
+    in5_delay[1] <= in5_delay[0];
 
-   // in5_delay1 <= in5;
-    in5_delay1 <= (mode == 0) ? in5 : in5_d1;
-    in5_delay2 <= in5_delay1;
-    in5_delay3 <= in5_delay2;
-    in_g_p14_delay1 <= in_g_p14;
-    in_g_p14_delay2 <= in_g_p14_delay1;
-    in_g_p14_delay3 <= in_g_p14_delay2;
-    in_g_p14_delay4 <= in_g_p14_delay3;
-    in_g_p13_delay1 <= in_g_p13;
-    in_g_p13_delay2 <= in_g_p13_delay1;
-    in_g_p13_delay3 <= in_g_p13_delay2;
-    in_g_p13_delay4 <= in_g_p13_delay3;
-    in_g_p13_delay5 <= in_g_p13_delay4;
-    in_g_p12_delay1 <= in_g_p12;
-    in_g_p12_delay2 <= in_g_p12_delay1;
-    in_g_p12_delay3 <= in_g_p12_delay2;
-    in_g_p12_delay4 <= in_g_p12_delay3;
-    in_g_p12_delay5 <= in_g_p12_delay4;
-    in_g_p12_delay6 <= in_g_p12_delay5;
-    in_g_p11_delay1 <= in_g_p11;
-    in_g_p11_delay2 <= in_g_p11_delay1;
-    in_g_p11_delay3 <= in_g_p11_delay2;
-    in_g_p11_delay4 <= in_g_p11_delay3;
-    in_g_p11_delay5 <= in_g_p11_delay4;
-    in_g_p11_delay6 <= in_g_p11_delay5;
-    in_g_p11_delay7 <= in_g_p11_delay6;
+    in1_delay[2] <= in1_delay[1];
+    in2_delay[2] <= in2_delay[1];
+    in3_delay[2] <= in3_delay[1];
+    in5_delay[2] <= in5_delay[1];
+
+    in1_delay[3] <= in1_delay[2];
+    in2_delay[3] <= in2_delay[2];
+    in3_delay[3] <= in3_delay[2];
 
 end
+
+always@(posedge clk)begin
+    w_p12_p21_delay[0] <= w_p12_p21;
+    w_p13_p22_delay[0] <= w_p13_p22;
+    w_p14_p23_delay[0] <= w_p14_p23;
+    w_p15_p24_delay[0] <= w_p15_p24;
+
+    w_p12_p21_delay[1] <= w_p12_p21_delay[0];
+    w_p13_p22_delay[1] <= w_p13_p22_delay[0];
+    w_p14_p23_delay[1] <= w_p14_p23_delay[0];
+    w_p15_p24_delay[1] <= w_p15_p24_delay[0];
+end
+
+always@(posedge clk)begin
+    in_g_p11_delay[0] <= in_g_p11;
+    in_g_p12_delay[0] <= in_g_p12;
+
+    in_g_p11_delay[1] <= in_g_p11_delay[0];
+    in_g_p12_delay[1] <= in_g_p12_delay[0];
+end
+
+always@(*)begin
+    if(mode == 0)begin
+        in1_new = (cnt <= 3)?in1 : (cnt <= 6)? w_p12_p21_delay[1] : w_p12_p21_delay[0];
+        in2_new = (cnt <= 4)?in2 : (cnt <= 7)? w_p13_p22_delay[1] : w_p13_p22_delay[0];
+        in3_new = (cnt <= 5)?in3 : (cnt <= 8)? w_p14_p23_delay[1] : w_p14_p23_delay[0];
+        in4_new = (cnt <= 6)?in4 : w_p15_p24_delay[1];
+        in5_new = in5;
+    end
+    else begin
+        in1_new = (cnt <= 6)? in1_delay[3] : w_p12_p21_delay[0];
+        in2_new = (cnt <= 7)? in2_delay[3] : w_p13_p22_delay[0];
+        in3_new = (cnt <= 8)? in3_delay[3] : w_p14_p23_delay[0];
+        in4_new = in5_delay[2];
+        in5_new = in5;
+    end
+end
+
+always@(posedge clk)begin
+    eq1[0] <= (cnt == 0) ? in_g_p11 : eq1[0];
+    eq1[1] <= (cnt == 1) ? in_g_p12 : eq1[1];
+    eq1[2] <= (cnt == 2) ? in_g_p13 : eq1[2];
+    eq1[3] <= (cnt == 3) ? in_g_p14 : eq1[3];
+    eq1[4] <= (cnt == 4) ? in5_new  : eq1[4];
+
+    eq2[0] <= (cnt == 4) ? in_g_p11 : eq2[0];
+    eq2[1] <= (cnt == 5) ? in_g_p12 : eq2[1];
+    eq2[2] <= (cnt == 6) ? in_g_p13 : eq2[2];
+    eq2[3] <= (cnt == 7) ? in4_new  : eq2[3];
+
+    eq3[0] <= (cnt == 7) ? in_g_p11 : eq3[0];
+    eq3[1] <= (cnt == 8) ? in_g_p12 : eq3[1];
+    eq3[2] <= (cnt == 9) ? in3_new  : eq3[2];
+end
+
+always@(posedge clk)begin
+    log_new_in <= log_new_in_n;
+    anti_new_in <= anti_new_in_n;
+end
+
+log     log_new (.in(log_new_in ),.out(log_new_out ));
+antilog anti_new(.in(anti_new_in),.out(anti_new_out));
 
 always@(posedge clk)begin
     sigma_1 <= sigma_1_n;
@@ -1692,53 +1587,426 @@ always@(posedge clk)begin
 end
 
 always@(*)begin
-    sigma_1_n = (cnt == 7)? (in_g_p42 >= in_g_p41_delay1)? in_g_p42 - in_g_p41_delay1 : in_g_p42 - in_g_p41_delay1 - 1 : sigma_1;
+    sigma_1_n = sigma_1;
+    sigma_2_n = sigma_2;
+    sigma_3_n = sigma_3;
+    sigma_4_n = sigma_4;
+    anti_new_in_n = anti_new_in;
+    log_new_in_n = log_new_in;
+    case(cnt)
+        12:begin
+            sigma_1_n = (in_g_p12_delay[0] >= in_g_p11_delay[1])? in_g_p12_delay[0] - in_g_p11_delay[1] : in_g_p12_delay[0] - in_g_p11_delay[1] - 1;
+        end
+
+
+        13:begin
+            anti_new_in_n = ({1'b0, sigma_1} + {1'b0, eq3[1]} >= 255) ? sigma_1 + eq3[1] + 1 : sigma_1 + eq3[1];
+            log_new_in_n = eq3[2];
+        end
+        14:begin
+            log_new_in_n = log_new_in ^  anti_new_out;
+        end
+        15:begin
+            sigma_2_n = (log_new_out >= eq3[0]) ? log_new_out - eq3[0] : log_new_out - eq3[0] -1;
+        end
+
+
+        16:begin
+            anti_new_in_n = ({1'b0, sigma_1} + {1'b0, eq2[2]} >= 255 ) ? sigma_1 + eq2[2] + 1 : sigma_1 + eq2[2];
+            log_new_in_n = eq2[3];
+        end
+        17:begin
+            anti_new_in_n = ({1'b0, sigma_2} + {1'b0, eq2[1]} >= 255 ) ? sigma_2 + eq2[1] + 1 : sigma_2 + eq2[1];
+            log_new_in_n = log_new_in ^ anti_new_out;
+        end
+        18:begin
+            log_new_in_n = log_new_in ^ anti_new_out;
+        end
+        19:begin
+            sigma_3_n = (log_new_out >= eq2[0]) ? log_new_out - eq2[0] : log_new_out - eq2[0] -1;
+        end
+
+
+        20:begin
+            anti_new_in_n = ({1'b0, sigma_1} + {1'b0, eq1[3]} >= 255 ) ? sigma_1 + eq1[3] + 1 : sigma_1 + eq1[3]; 
+            log_new_in_n = eq1[4];
+        end
+        21:begin
+            anti_new_in_n = ({1'b0, sigma_2} + {1'b0, eq1[2]} >= 255 ) ? sigma_2 + eq1[2] + 1 : sigma_2 + eq1[2]; 
+            log_new_in_n = log_new_in ^ anti_new_out;
+        end
+        22:begin
+            anti_new_in_n = ({1'b0, sigma_3} + {1'b0, eq1[1]} >= 255 ) ? sigma_3 + eq1[1] + 1 : sigma_3 + eq1[1]; 
+            log_new_in_n = log_new_in ^ anti_new_out;
+        end
+        23:begin
+            log_new_in_n = log_new_in ^ anti_new_out;
+        end
+        24:begin
+            sigma_4_n = (log_new_out >= eq1[0]) ? log_new_out - eq1[0] : log_new_out - eq1[0] -1;
+        end
+
+        default:begin
+            sigma_1_n = sigma_1;
+            sigma_2_n = sigma_2;
+            sigma_3_n = sigma_3;
+            sigma_4_n = sigma_4;
+            anti_new_in_n = anti_new_in;
+            log_new_in_n = log_new_in;
+        end
+    endcase
 end
 
-always@(*)begin
-    anti_u1_in = ({1'b0,sigma_1} + {1'b0,in_g_p32_delay2} >= 255)? sigma_1 + in_g_p32_delay2 + 1 : sigma_1 + in_g_p32_delay2;
-    log_u1_in = anti_u1_out ^ w_p24_p33_delay1;
-    sigma_2_n = (cnt == 8)? (log_u1_out >= in_g_p31_delay3)? log_u1_out - in_g_p31_delay3 : log_u1_out - in_g_p31_delay3-1 : sigma_2;
-end
-
-always@(*)begin
-    anti_u2_in = ({1'b0,sigma_1} + {1'b0,in_g_p23_delay3} >= 255)? sigma_1 + in_g_p23_delay3 + 1 : sigma_1 + in_g_p23_delay3;
-    anti_u3_in = ({1'b0,sigma_2} + {1'b0,in_g_p22_delay4} >= 255)? sigma_2 + in_g_p22_delay4 + 1 : sigma_2 + in_g_p22_delay4;
-    log_u2_in = anti_u2_out ^ anti_u3_out ^ w_p15_p24_delay2;
-    sigma_3_n = (cnt == 9)? (log_u2_out >= in_g_p21_delay5)? log_u2_out - in_g_p21_delay5 : log_u2_out - in_g_p21_delay5-1 : sigma_3;
-end
-
-always@(*)begin
-    anti_u4_in = ({1'b0,sigma_1} + {1'b0,in_g_p14_delay4} >= 255)? sigma_1 + in_g_p14_delay4 + 1 : sigma_1 + in_g_p14_delay4;
-    anti_u5_in = ({1'b0,sigma_2} + {1'b0,in_g_p13_delay5} >= 255)? sigma_2 + in_g_p13_delay5 + 1 : sigma_2 + in_g_p13_delay5;
-    anti_u6_in = ({1'b0,sigma_3} + {1'b0,in_g_p12_delay6} >= 255)? sigma_3 + in_g_p12_delay6 + 1 : sigma_3 + in_g_p12_delay6;
-    log_u3_in = anti_u4_out ^ anti_u5_out ^ anti_u6_out ^ in5_delay3;
-    sigma_4_n = (cnt == 10)? (log_u3_out >= in_g_p11_delay7)? log_u3_out - in_g_p11_delay7 : log_u3_out - in_g_p11_delay7-1 : sigma_4;
-    
-end
-
-
-assign finish_n = (cnt == 10)?1:0;
+assign finish_n = (cnt == 24)?1:0;
 
 
 endmodule
 
-module add_gf(
-input [7:0] in1,
-input [7:0] in2,
-output reg [7:0] out
-);
 
-
-always@(*)begin
-    if({1'b0, in1} + {1'b0,in2} >= 255)begin
-        out = in1 + in2 + 1;
-    end
-    else begin
-        out = in1+in2;
-    end
-end
-endmodule
+//module systolic(
+//input [7:0] in1,
+//input [7:0] in2,
+//input [7:0] in3,
+//input [7:0] in4,
+//input [7:0] in5,
+//input clk,
+//input start,
+//input srstn,
+//input mode,
+//
+//output reg [7:0] sigma_1,
+//output reg [7:0] sigma_2,
+//output reg [7:0] sigma_3,
+//output reg [7:0] sigma_4,
+//output reg finish
+//
+//);
+//wire finish_n;
+//
+//wire[7:0] w_p11_p12; 
+//wire[7:0] w_p12_p13; 
+//wire[7:0] w_p13_p14; 
+//wire[7:0] w_p14_p15; 
+//wire[7:0] w_p15_p16; 
+//
+//wire[7:0] w_p21_p22;
+//wire[7:0] w_p22_p23;
+//wire[7:0] w_p23_p24;
+//wire[7:0] w_p24_p25;
+//
+//wire[7:0] w_p31_p32;
+//wire[7:0] w_p32_p33;
+//wire[7:0] w_p33_p34;
+//
+//wire[7:0] w_p41_p42;
+//wire[7:0] w_p42_p43;
+//
+//wire s_p11_p12;
+//wire s_p12_p13;
+//wire s_p13_p14;
+//wire s_p14_p15;
+//wire s_p15_p16;
+//
+//wire s_p21_p22;
+//wire s_p22_p23;
+//wire s_p23_p24;
+//wire s_p24_p25;
+//
+//wire s_p31_p32;
+//wire s_p32_p33;
+//wire s_p33_p34;
+//
+//wire s_p41_p42;
+//wire s_p42_p43;
+//
+//wire[7:0] w_p12_p21;
+//wire[7:0] w_p13_p22;
+//wire[7:0] w_p14_p23;
+//wire[7:0] w_p15_p24;
+//
+//wire[7:0] w_p22_p31; 
+//wire[7:0] w_p23_p32; 
+//wire[7:0] w_p24_p33; 
+//
+//wire[7:0] w_p32_p41; 
+//wire[7:0] w_p33_p42; 
+//
+//wire[7:0] w_p42_p51; 
+//
+//wire[7:0] in_g_p11;
+//wire[7:0] in_g_p12;
+//wire[7:0] in_g_p13;
+//wire[7:0] in_g_p14;
+//wire[7:0] in_g_p15;
+//
+//wire[7:0] in_g_p21;
+//wire[7:0] in_g_p22;
+//wire[7:0] in_g_p23;
+//wire[7:0] in_g_p24;
+//
+//wire[7:0] in_g_p31;
+//wire[7:0] in_g_p32;
+//wire[7:0] in_g_p33;
+//
+//wire[7:0] in_g_p41;
+//wire[7:0] in_g_p42;
+//
+//wire [7:0] w_p12_p21_tmp;
+//wire [7:0] w_p13_p22_tmp;
+//wire [7:0] w_p14_p23_tmp;
+//wire [7:0] w_p15_p24_tmp;
+//
+////circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
+////rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21),.in_g(in_g_p12));
+////rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22),.in_g(in_g_p13));
+////rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23),.in_g(in_g_p14));
+////rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24),.in_g(in_g_p15));
+//
+//circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
+//rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21_tmp),.in_g(in_g_p12));
+//rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22_tmp),.in_g(in_g_p13));
+//rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23_tmp),.in_g(in_g_p14));
+//rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24_tmp),.in_g(in_g_p15));
+//
+//
+//
+//
+//reg [7:0] in1_d1, in1_d2;
+//reg [7:0] in2_d1, in2_d2;
+//reg [7:0] in3_d1, in3_d2;
+//reg [7:0] in5_d1;
+//
+//always@(posedge clk)begin
+//    in1_d1 <= in1;
+//    in1_d2 <= in1_d1;
+//    
+//    in2_d1 <= in2;
+//    in2_d2 <= in2_d1;
+//    
+//    in3_d1 <= in3;
+//    in3_d2 <= in3_d1;
+//    
+//    in5_d1 <= in5;
+//end
+//
+//assign w_p12_p21 = (mode == 0) ? w_p12_p21_tmp : in1_d2;
+//assign w_p13_p22 = (mode == 0) ? w_p13_p22_tmp : in2_d2;
+//assign w_p14_p23 = (mode == 0) ? w_p14_p23_tmp : in3_d2;
+//assign w_p15_p24 = (mode == 0) ? w_p15_p24_tmp : in5_d1;
+//
+//circle p21 (.clk(clk),.in(w_p12_p21),.out(w_p21_p22),.sign(s_p21_p22),.in_g(in_g_p21));
+//rect   p22 (.clk(clk),.in(w_p13_p22),.in_c(w_p21_p22),.in_sign(s_p21_p22),.out_c(w_p22_p23),.out_sign(s_p22_p23),.out(w_p22_p31),.in_g(in_g_p22));
+//rect   p23 (.clk(clk),.in(w_p14_p23),.in_c(w_p22_p23),.in_sign(s_p22_p23),.out_c(w_p23_p24),.out_sign(s_p23_p24),.out(w_p23_p32),.in_g(in_g_p23));
+//rect   p24 (.clk(clk),.in(w_p15_p24),.in_c(w_p23_p24),.in_sign(s_p23_p24),.out_c(w_p24_p25),.out_sign(s_p24_p25),.out(w_p24_p33),.in_g(in_g_p24));
+//
+//circle p31 (.clk(clk),.in(w_p22_p31),.out(w_p31_p32),.sign(s_p31_p32),.in_g(in_g_p31));
+//rect   p32 (.clk(clk),.in(w_p23_p32),.in_c(w_p31_p32),.in_sign(s_p31_p32),.out_c(w_p32_p33),.out_sign(s_p32_p33),.out(w_p32_p41),.in_g(in_g_p32));
+//rect   p33 (.clk(clk),.in(w_p24_p33),.in_c(w_p32_p33),.in_sign(s_p32_p33),.out_c(w_p33_p34),.out_sign(s_p33_p34),.out(w_p33_p42),.in_g(in_g_p33));
+//
+//
+//circle p41 (.clk(clk),.in(w_p32_p41),.out(w_p41_p42),.sign(s_p41_p42),.in_g(in_g_p41));
+//rect   p42 (.clk(clk),.in(w_p33_p42),.in_c(w_p41_p42),.in_sign(s_p41_p42),.out_c(w_p42_p43),.out_sign(s_p42_p43),.out(w_p42_p51),.in_g(in_g_p42));
+//
+//reg [4:0] cnt;
+//
+//always@(posedge clk)begin
+//    if(~srstn)begin
+//        cnt <= 0;
+//    end
+//    else begin
+//        if(start)begin
+//            cnt <= cnt + 1;
+//        end
+//        else begin
+//            cnt <= 0;
+//        end
+//
+//    end
+//end
+//
+//reg [7:0] sigma_1_n, sigma_2_n, sigma_3_n, sigma_4_n;
+//
+//
+//
+//reg [7:0] in_g_p41_delay1;
+//
+//reg [7:0] in_g_p32_delay1;
+//reg [7:0] in_g_p32_delay2;
+//reg [7:0] w_p24_p33_delay1;
+//reg [7:0] in_g_p31_delay1;
+//reg [7:0] in_g_p31_delay2;
+//reg [7:0] in_g_p31_delay3;
+//
+//reg [7:0] log_u1_in;
+//wire [7:0] log_u1_out;
+//reg [7:0] anti_u1_in;
+//wire [7:0] anti_u1_out;
+//
+//log logu1(.in(log_u1_in),.out(log_u1_out));
+//antilog antiu1(.in(anti_u1_in),.out(anti_u1_out));
+//
+//reg [7:0] log_u2_in;
+//wire [7:0] log_u2_out;
+//reg [7:0] anti_u2_in;
+//wire [7:0] anti_u2_out;
+//reg [7:0] anti_u3_in;
+//wire [7:0] anti_u3_out;
+//
+//log logu2(.in(log_u2_in),.out(log_u2_out));
+//antilog antiu2(.in(anti_u2_in),.out(anti_u2_out));
+//antilog antiu3(.in(anti_u3_in),.out(anti_u3_out));
+//
+//reg [7:0] w_p15_p24_delay1;
+//reg [7:0] w_p15_p24_delay2;
+//reg [7:0] in_g_p23_delay1;
+//reg [7:0] in_g_p23_delay2;
+//reg [7:0] in_g_p23_delay3;
+//reg [7:0] in_g_p22_delay1;
+//reg [7:0] in_g_p22_delay2;
+//reg [7:0] in_g_p22_delay3;
+//reg [7:0] in_g_p22_delay4;
+//reg [7:0] in_g_p21_delay1;
+//reg [7:0] in_g_p21_delay2;
+//reg [7:0] in_g_p21_delay3;
+//reg [7:0] in_g_p21_delay4;
+//reg [7:0] in_g_p21_delay5;
+//
+//
+//reg [7:0] log_u3_in;
+//wire [7:0] log_u3_out;
+//reg [7:0] anti_u4_in;
+//wire [7:0] anti_u4_out;
+//reg [7:0] anti_u5_in;
+//wire [7:0] anti_u5_out;
+//reg [7:0] anti_u6_in;
+//wire [7:0] anti_u6_out;
+//
+//log logu3(.in(log_u3_in),.out(log_u3_out));
+//antilog antiu4(.in(anti_u4_in),.out(anti_u4_out));
+//antilog antiu5(.in(anti_u5_in),.out(anti_u5_out));
+//antilog antiu6(.in(anti_u6_in),.out(anti_u6_out));
+//
+//
+//reg [7:0] in5_delay1;
+//reg [7:0] in5_delay2;
+//reg [7:0] in5_delay3;
+//reg [7:0] in_g_p14_delay1;
+//reg [7:0] in_g_p14_delay2;
+//reg [7:0] in_g_p14_delay3;
+//reg [7:0] in_g_p14_delay4;
+//reg [7:0] in_g_p13_delay1;
+//reg [7:0] in_g_p13_delay2;
+//reg [7:0] in_g_p13_delay3;
+//reg [7:0] in_g_p13_delay4;
+//reg [7:0] in_g_p13_delay5;
+//reg [7:0] in_g_p12_delay1;
+//reg [7:0] in_g_p12_delay2;
+//reg [7:0] in_g_p12_delay3;
+//reg [7:0] in_g_p12_delay4;
+//reg [7:0] in_g_p12_delay5;
+//reg [7:0] in_g_p12_delay6;
+//reg [7:0] in_g_p11_delay1;
+//reg [7:0] in_g_p11_delay2;
+//reg [7:0] in_g_p11_delay3;
+//reg [7:0] in_g_p11_delay4;
+//reg [7:0] in_g_p11_delay5;
+//reg [7:0] in_g_p11_delay6;
+//reg [7:0] in_g_p11_delay7;
+//
+//
+//always@(posedge clk)begin
+//    in_g_p41_delay1 <= in_g_p41;
+//    
+//    in_g_p32_delay1 <= in_g_p32;
+//    in_g_p32_delay2 <= in_g_p32_delay1;
+//    w_p24_p33_delay1 <= w_p24_p33;
+//    in_g_p31_delay1 <= in_g_p31;
+//    in_g_p31_delay2 <= in_g_p31_delay1;
+//    in_g_p31_delay3 <= in_g_p31_delay2;
+//
+//    w_p15_p24_delay1 <= w_p15_p24;
+//    w_p15_p24_delay2 <= w_p15_p24_delay1;
+//    in_g_p23_delay1 <= in_g_p23;
+//    in_g_p23_delay2 <= in_g_p23_delay1;
+//    in_g_p23_delay3 <= in_g_p23_delay2;
+//    in_g_p22_delay1 <= in_g_p22;
+//    in_g_p22_delay2 <= in_g_p22_delay1;
+//    in_g_p22_delay3 <= in_g_p22_delay2;
+//    in_g_p22_delay4 <= in_g_p22_delay3;
+//    in_g_p21_delay1 <= in_g_p21;
+//    in_g_p21_delay2 <= in_g_p21_delay1;
+//    in_g_p21_delay3 <= in_g_p21_delay2;
+//    in_g_p21_delay4 <= in_g_p21_delay3;
+//    in_g_p21_delay5 <= in_g_p21_delay4;
+//
+//   // in5_delay1 <= in5;
+//    in5_delay1 <= (mode == 0) ? in5 : in5_d1;
+//    in5_delay2 <= in5_delay1;
+//    in5_delay3 <= in5_delay2;
+//    in_g_p14_delay1 <= in_g_p14;
+//    in_g_p14_delay2 <= in_g_p14_delay1;
+//    in_g_p14_delay3 <= in_g_p14_delay2;
+//    in_g_p14_delay4 <= in_g_p14_delay3;
+//    in_g_p13_delay1 <= in_g_p13;
+//    in_g_p13_delay2 <= in_g_p13_delay1;
+//    in_g_p13_delay3 <= in_g_p13_delay2;
+//    in_g_p13_delay4 <= in_g_p13_delay3;
+//    in_g_p13_delay5 <= in_g_p13_delay4;
+//    in_g_p12_delay1 <= in_g_p12;
+//    in_g_p12_delay2 <= in_g_p12_delay1;
+//    in_g_p12_delay3 <= in_g_p12_delay2;
+//    in_g_p12_delay4 <= in_g_p12_delay3;
+//    in_g_p12_delay5 <= in_g_p12_delay4;
+//    in_g_p12_delay6 <= in_g_p12_delay5;
+//    in_g_p11_delay1 <= in_g_p11;
+//    in_g_p11_delay2 <= in_g_p11_delay1;
+//    in_g_p11_delay3 <= in_g_p11_delay2;
+//    in_g_p11_delay4 <= in_g_p11_delay3;
+//    in_g_p11_delay5 <= in_g_p11_delay4;
+//    in_g_p11_delay6 <= in_g_p11_delay5;
+//    in_g_p11_delay7 <= in_g_p11_delay6;
+//
+//end
+//
+//always@(posedge clk)begin
+//    sigma_1 <= sigma_1_n;
+//    sigma_2 <= sigma_2_n;
+//    sigma_3 <= sigma_3_n;
+//    sigma_4 <= sigma_4_n;
+//    finish <= finish_n;
+//end
+//
+//always@(*)begin
+//    sigma_1_n = (cnt == 7)? (in_g_p42 >= in_g_p41_delay1)? in_g_p42 - in_g_p41_delay1 : in_g_p42 - in_g_p41_delay1 - 1 : sigma_1;
+//end
+//
+//always@(*)begin
+//    anti_u1_in = ({1'b0,sigma_1} + {1'b0,in_g_p32_delay2} >= 255)? sigma_1 + in_g_p32_delay2 + 1 : sigma_1 + in_g_p32_delay2;
+//    log_u1_in = anti_u1_out ^ w_p24_p33_delay1;
+//    sigma_2_n = (cnt == 8)? (log_u1_out >= in_g_p31_delay3)? log_u1_out - in_g_p31_delay3 : log_u1_out - in_g_p31_delay3-1 : sigma_2;
+//end
+//
+//always@(*)begin
+//    anti_u2_in = ({1'b0,sigma_1} + {1'b0,in_g_p23_delay3} >= 255)? sigma_1 + in_g_p23_delay3 + 1 : sigma_1 + in_g_p23_delay3;
+//    anti_u3_in = ({1'b0,sigma_2} + {1'b0,in_g_p22_delay4} >= 255)? sigma_2 + in_g_p22_delay4 + 1 : sigma_2 + in_g_p22_delay4;
+//    log_u2_in = anti_u2_out ^ anti_u3_out ^ w_p15_p24_delay2;
+//    sigma_3_n = (cnt == 9)? (log_u2_out >= in_g_p21_delay5)? log_u2_out - in_g_p21_delay5 : log_u2_out - in_g_p21_delay5-1 : sigma_3;
+//end
+//
+//always@(*)begin
+//    anti_u4_in = ({1'b0,sigma_1} + {1'b0,in_g_p14_delay4} >= 255)? sigma_1 + in_g_p14_delay4 + 1 : sigma_1 + in_g_p14_delay4;
+//    anti_u5_in = ({1'b0,sigma_2} + {1'b0,in_g_p13_delay5} >= 255)? sigma_2 + in_g_p13_delay5 + 1 : sigma_2 + in_g_p13_delay5;
+//    anti_u6_in = ({1'b0,sigma_3} + {1'b0,in_g_p12_delay6} >= 255)? sigma_3 + in_g_p12_delay6 + 1 : sigma_3 + in_g_p12_delay6;
+//    log_u3_in = anti_u4_out ^ anti_u5_out ^ anti_u6_out ^ in5_delay3;
+//    sigma_4_n = (cnt == 10)? (log_u3_out >= in_g_p11_delay7)? log_u3_out - in_g_p11_delay7 : log_u3_out - in_g_p11_delay7-1 : sigma_4;
+//    
+//end
+//
+//
+//assign finish_n = (cnt == 10)?1:0;
+//
+//
+//endmodule
 
 
 
@@ -1763,6 +2031,7 @@ reg [8:0] tmp;
 
 log u1 (.in(in),.out(in1));
 antilog u2(.in(in3),.out(in4));
+
 assign in_g = in1;
 
 always@(*)begin
