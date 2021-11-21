@@ -6,10 +6,8 @@ Report : timing
         -max_paths 4
 Design : qr_decode
 Version: R-2020.09-SP5
-Date   : Fri Nov 19 21:57:38 2021
+Date   : Mon Nov 22 00:27:01 2021
 ****************************************
-
- # A fanout number of 1000 was used for high fanout net computations.
 
 Operating Conditions: ss0p95v125c   Library: saed32hvt_ss0p95v125c
 Wire Load Model Mode: enclosed
@@ -28,35 +26,33 @@ Wire Load Model Mode: enclosed
   --------------------------------------------------------------------------
   clock clk (rise edge)                                   0.00       0.00
   clock network delay (ideal)                             0.00       0.00
-  input external delay                                    3.20       3.20 r
-  srstn (in)                                              0.00       3.20 r
-  U3433/Y (INVX32_HVT)                                    0.01       3.21 f
-  U3435/Y (INVX16_HVT)                                    0.02       3.23 r
-  U3888/Y (AND2X1_HVT)                                    0.08       3.31 r
-  U3463/Y (INVX1_HVT)                                     0.08       3.39 f
+  input external delay                                    2.56       2.56 r
+  srstn (in)                                              0.00       2.56 r
+  U3754/Y (AND2X1_HVT)                                    0.08       2.64 r
+  U3755/Y (INVX2_HVT)                                     0.06       2.70 f
   clk_gate_offset_reg_0_/EN (SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_65)
-                                                          0.00       3.39 f
-  clk_gate_offset_reg_0_/latch/D (LATCHX1_HVT)            0.00       3.39 f
-  data arrival time                                                  3.39
+                                                          0.00       2.70 f
+  clk_gate_offset_reg_0_/latch/D (LATCHX1_HVT)            0.00       2.70 f
+  data arrival time                                                  2.70
 
-  clock clk' (rise edge)                                  2.00       2.00
-  clock network delay (ideal)                             0.00       2.00
-  clk_gate_offset_reg_0_/latch/CLK (LATCHX1_HVT)          0.00       2.00 r
-  time borrowed from endpoint                             1.39       3.39
-  data required time                                                 3.39
+  clock clk' (rise edge)                                  1.60       1.60
+  clock network delay (ideal)                             0.00       1.60
+  clk_gate_offset_reg_0_/latch/CLK (LATCHX1_HVT)          0.00       1.60 r
+  time borrowed from endpoint                             1.10       2.70
+  data required time                                                 2.70
   --------------------------------------------------------------------------
-  data required time                                                 3.39
-  data arrival time                                                 -3.39
+  data required time                                                 2.70
+  data arrival time                                                 -2.70
   --------------------------------------------------------------------------
   slack (MET)                                                        0.00
 
   Time Borrowing Information
   --------------------------------------------------------------
-  clk' nominal pulse width                                2.00   
+  clk' nominal pulse width                                1.60   
   library setup time                                     -0.10   
   --------------------------------------------------------------
-  max time borrow                                         1.90   
-  actual time borrow                                      1.39   
+  max time borrow                                         1.50   
+  actual time borrow                                      1.10   
   --------------------------------------------------------------
 
 
@@ -74,35 +70,33 @@ Wire Load Model Mode: enclosed
   --------------------------------------------------------------------------
   clock clk (rise edge)                                   0.00       0.00
   clock network delay (ideal)                             0.00       0.00
-  input external delay                                    3.20       3.20 r
-  srstn (in)                                              0.00       3.20 r
-  U3433/Y (INVX32_HVT)                                    0.01       3.21 f
-  U3435/Y (INVX16_HVT)                                    0.02       3.23 r
-  U3888/Y (AND2X1_HVT)                                    0.08       3.31 r
-  U3463/Y (INVX1_HVT)                                     0.08       3.39 f
+  input external delay                                    2.56       2.56 r
+  srstn (in)                                              0.00       2.56 r
+  U3754/Y (AND2X1_HVT)                                    0.08       2.64 r
+  U3755/Y (INVX2_HVT)                                     0.06       2.70 f
   clk_gate_offset_reg_2_/EN (SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_63)
-                                                          0.00       3.39 f
-  clk_gate_offset_reg_2_/latch/D (LATCHX1_HVT)            0.00       3.39 f
-  data arrival time                                                  3.39
+                                                          0.00       2.70 f
+  clk_gate_offset_reg_2_/latch/D (LATCHX1_HVT)            0.00       2.70 f
+  data arrival time                                                  2.70
 
-  clock clk' (rise edge)                                  2.00       2.00
-  clock network delay (ideal)                             0.00       2.00
-  clk_gate_offset_reg_2_/latch/CLK (LATCHX1_HVT)          0.00       2.00 r
-  time borrowed from endpoint                             1.39       3.39
-  data required time                                                 3.39
+  clock clk' (rise edge)                                  1.60       1.60
+  clock network delay (ideal)                             0.00       1.60
+  clk_gate_offset_reg_2_/latch/CLK (LATCHX1_HVT)          0.00       1.60 r
+  time borrowed from endpoint                             1.10       2.70
+  data required time                                                 2.70
   --------------------------------------------------------------------------
-  data required time                                                 3.39
-  data arrival time                                                 -3.39
+  data required time                                                 2.70
+  data arrival time                                                 -2.70
   --------------------------------------------------------------------------
   slack (MET)                                                        0.00
 
   Time Borrowing Information
   --------------------------------------------------------------
-  clk' nominal pulse width                                2.00   
+  clk' nominal pulse width                                1.60   
   library setup time                                     -0.10   
   --------------------------------------------------------------
-  max time borrow                                         1.90   
-  actual time borrow                                      1.39   
+  max time borrow                                         1.50   
+  actual time borrow                                      1.10   
   --------------------------------------------------------------
 
 
@@ -120,35 +114,33 @@ Wire Load Model Mode: enclosed
   --------------------------------------------------------------------------
   clock clk (rise edge)                                   0.00       0.00
   clock network delay (ideal)                             0.00       0.00
-  input external delay                                    3.20       3.20 r
-  srstn (in)                                              0.00       3.20 r
-  U3433/Y (INVX32_HVT)                                    0.01       3.21 f
-  U3435/Y (INVX16_HVT)                                    0.02       3.23 r
-  U3888/Y (AND2X1_HVT)                                    0.08       3.31 r
-  U3463/Y (INVX1_HVT)                                     0.08       3.39 f
+  input external delay                                    2.56       2.56 r
+  srstn (in)                                              0.00       2.56 r
+  U3754/Y (AND2X1_HVT)                                    0.08       2.64 r
+  U3755/Y (INVX2_HVT)                                     0.06       2.70 f
   clk_gate_offset_reg_5_/EN (SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_61)
-                                                          0.00       3.39 f
-  clk_gate_offset_reg_5_/latch/D (LATCHX1_HVT)            0.00       3.39 f
-  data arrival time                                                  3.39
+                                                          0.00       2.70 f
+  clk_gate_offset_reg_5_/latch/D (LATCHX1_HVT)            0.00       2.70 f
+  data arrival time                                                  2.70
 
-  clock clk' (rise edge)                                  2.00       2.00
-  clock network delay (ideal)                             0.00       2.00
-  clk_gate_offset_reg_5_/latch/CLK (LATCHX1_HVT)          0.00       2.00 r
-  time borrowed from endpoint                             1.39       3.39
-  data required time                                                 3.39
+  clock clk' (rise edge)                                  1.60       1.60
+  clock network delay (ideal)                             0.00       1.60
+  clk_gate_offset_reg_5_/latch/CLK (LATCHX1_HVT)          0.00       1.60 r
+  time borrowed from endpoint                             1.10       2.70
+  data required time                                                 2.70
   --------------------------------------------------------------------------
-  data required time                                                 3.39
-  data arrival time                                                 -3.39
+  data required time                                                 2.70
+  data arrival time                                                 -2.70
   --------------------------------------------------------------------------
   slack (MET)                                                        0.00
 
   Time Borrowing Information
   --------------------------------------------------------------
-  clk' nominal pulse width                                2.00   
+  clk' nominal pulse width                                1.60   
   library setup time                                     -0.10   
   --------------------------------------------------------------
-  max time borrow                                         1.90   
-  actual time borrow                                      1.39   
+  max time borrow                                         1.50   
+  actual time borrow                                      1.10   
   --------------------------------------------------------------
 
 
@@ -166,35 +158,33 @@ Wire Load Model Mode: enclosed
   --------------------------------------------------------------------------
   clock clk (rise edge)                                   0.00       0.00
   clock network delay (ideal)                             0.00       0.00
-  input external delay                                    3.20       3.20 r
-  srstn (in)                                              0.00       3.20 r
-  U3433/Y (INVX32_HVT)                                    0.01       3.21 f
-  U3435/Y (INVX16_HVT)                                    0.02       3.23 r
-  U3888/Y (AND2X1_HVT)                                    0.08       3.31 r
-  U3463/Y (INVX1_HVT)                                     0.08       3.39 f
+  input external delay                                    2.56       2.56 r
+  srstn (in)                                              0.00       2.56 r
+  U3754/Y (AND2X1_HVT)                                    0.08       2.64 r
+  U3755/Y (INVX2_HVT)                                     0.06       2.70 f
   clk_gate_offset_reg_7_/EN (SNPS_CLOCK_GATE_HIGH_qr_decode_mydesign_59)
-                                                          0.00       3.39 f
-  clk_gate_offset_reg_7_/latch/D (LATCHX1_HVT)            0.00       3.39 f
-  data arrival time                                                  3.39
+                                                          0.00       2.70 f
+  clk_gate_offset_reg_7_/latch/D (LATCHX1_HVT)            0.00       2.70 f
+  data arrival time                                                  2.70
 
-  clock clk' (rise edge)                                  2.00       2.00
-  clock network delay (ideal)                             0.00       2.00
-  clk_gate_offset_reg_7_/latch/CLK (LATCHX1_HVT)          0.00       2.00 r
-  time borrowed from endpoint                             1.39       3.39
-  data required time                                                 3.39
+  clock clk' (rise edge)                                  1.60       1.60
+  clock network delay (ideal)                             0.00       1.60
+  clk_gate_offset_reg_7_/latch/CLK (LATCHX1_HVT)          0.00       1.60 r
+  time borrowed from endpoint                             1.10       2.70
+  data required time                                                 2.70
   --------------------------------------------------------------------------
-  data required time                                                 3.39
-  data arrival time                                                 -3.39
+  data required time                                                 2.70
+  data arrival time                                                 -2.70
   --------------------------------------------------------------------------
   slack (MET)                                                        0.00
 
   Time Borrowing Information
   --------------------------------------------------------------
-  clk' nominal pulse width                                2.00   
+  clk' nominal pulse width                                1.60   
   library setup time                                     -0.10   
   --------------------------------------------------------------
-  max time borrow                                         1.90   
-  actual time borrow                                      1.39   
+  max time borrow                                         1.50   
+  actual time borrow                                      1.10   
   --------------------------------------------------------------
 
 
