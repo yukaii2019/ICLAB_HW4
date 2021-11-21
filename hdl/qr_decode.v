@@ -29,6 +29,9 @@ localparam [4:0] DE_MASKING_2 = 4;
 localparam [4:0] DE_MASKING_3 = 5;
 localparam [4:0] CALCULATE_SYNDROME_1 = 6;
 localparam [4:0] CALCULATE_SYNDROME_2 = 7;
+
+
+
 localparam [4:0] SOLVE_EQUATION = 8;
 localparam [4:0] FIND_ERROR_POSITION = 9;
 localparam [4:0] SOLVE_EQUATION_2 = 10;
@@ -39,6 +42,9 @@ localparam [4:0] DE_MASKING_4 = 14;
 localparam [4:0] DE_MASKING_5 = 15;
 localparam [4:0] BLANK = 16;
 localparam [4:0] BLANK2 = 17;
+
+//localparam [4:0] CALCULATE_SYNDROME_3 = 18;
+
 
 
 
@@ -234,21 +240,6 @@ assign c[41] = {code[150], code[174], code[175], code[199], code[200], code[224]
 assign c[42] = {code[250], code[274], code[275], code[299], code[300], code[324], code[325], code[326]};
 assign c[43] = {code[327], code[301], code[302], code[276], code[277], code[251], code[252], code[226]};
 
-wire [7:0] log_out;
-wire [7:0] log_in;
-log u2(
-.in(c[gf_cnt]),
-.out(log_out)
-);
-
-wire [7:0] antilog_out;
-wire [7:0] antilog_in;
-
-antilog u3(
-.in(antilog_in),
-.out(antilog_out)
-);
-
 
 //wire [7:0] test_0 = c_correct[0];
 //wire [7:0] test_1 = c_correct[1];
@@ -261,6 +252,7 @@ always@(*)begin
 end
 
 reg [7:0] syndrome [0:7];
+//reg [7:0] syndrome_n [0:7];
 wire [7:0] tmp_s;
 
 reg [7:0] ss [0:7];
@@ -277,7 +269,7 @@ always@(posedge clk)begin
         ss[7] <= 0;
     end
     else begin
-        if(state == CALCULATE_SYNDROME_1)begin
+        if(state == CALCULATE_SYNDROME_2)begin
             ss[0] <= ss[0];
             ss[1] <= ss[1] + 1;
             ss[2] <= ss[2] + 2;
@@ -301,11 +293,41 @@ always@(posedge clk)begin
         end
     end
 end
+wire [7:0] log_out;
+wire [7:0] antilog_out[0:7];
+wire [7:0] antilog_in[0:7];
 
 reg [2:0]  gf_cnt_y, gf_cnt_y_n;
+reg [7:0] log_out_2;
+
+always@(posedge clk)begin
+    log_out_2 <= log_out;
+end
+
+
 
 //add_gf add_u1(.in1(log_out),.in2(ss[gf_cnt_y]),.out(antilog_in));
-assign antilog_in = ({1'b0,log_out} + {1'b0, ss[gf_cnt_y]} >= 255)? log_out + ss[gf_cnt_y] + 1: log_out + ss[gf_cnt_y]; 
+assign antilog_in[0] = ({1'b0,log_out_2} + {1'b0, ss[0]} >= 255)? log_out_2 + ss[0] + 1: log_out_2 + ss[0]; 
+assign antilog_in[1] = ({1'b0,log_out_2} + {1'b0, ss[1]} >= 255)? log_out_2 + ss[1] + 1: log_out_2 + ss[1]; 
+assign antilog_in[2] = ({1'b0,log_out_2} + {1'b0, ss[2]} >= 255)? log_out_2 + ss[2] + 1: log_out_2 + ss[2]; 
+assign antilog_in[3] = ({1'b0,log_out_2} + {1'b0, ss[3]} >= 255)? log_out_2 + ss[3] + 1: log_out_2 + ss[3]; 
+assign antilog_in[4] = ({1'b0,log_out_2} + {1'b0, ss[4]} >= 255)? log_out_2 + ss[4] + 1: log_out_2 + ss[4]; 
+assign antilog_in[5] = ({1'b0,log_out_2} + {1'b0, ss[5]} >= 255)? log_out_2 + ss[5] + 1: log_out_2 + ss[5]; 
+assign antilog_in[6] = ({1'b0,log_out_2} + {1'b0, ss[6]} >= 255)? log_out_2 + ss[6] + 1: log_out_2 + ss[6]; 
+assign antilog_in[7] = ({1'b0,log_out_2} + {1'b0, ss[7]} >= 255)? log_out_2 + ss[7] + 1: log_out_2 + ss[7]; 
+
+log log_u1(.in(c[gf_cnt]),.out(log_out));
+
+antilog anti_u1 (.in(antilog_in[0]),.out(antilog_out[0]));
+antilog anti_u2 (.in(antilog_in[1]),.out(antilog_out[1]));
+antilog anti_u3 (.in(antilog_in[2]),.out(antilog_out[2]));
+antilog anti_u4 (.in(antilog_in[3]),.out(antilog_out[3]));
+antilog anti_u5 (.in(antilog_in[4]),.out(antilog_out[4]));
+antilog anti_u6 (.in(antilog_in[5]),.out(antilog_out[5]));
+antilog anti_u7 (.in(antilog_in[6]),.out(antilog_out[6]));
+antilog anti_u8 (.in(antilog_in[7]),.out(antilog_out[7]));
+
+
 
 
 always@(posedge clk)begin
@@ -321,7 +343,15 @@ always@(posedge clk)begin
     end
     else begin
         if(state == CALCULATE_SYNDROME_2)begin
-            syndrome[gf_cnt_y] <= syndrome[gf_cnt_y] ^ antilog_out;
+            //syndrome[gf_cnt_y] <= syndrome[gf_cnt_y] ^ antilog_out;
+            syndrome[0] <= syndrome[0] ^ antilog_out[0];
+            syndrome[1] <= syndrome[1] ^ antilog_out[1];
+            syndrome[2] <= syndrome[2] ^ antilog_out[2];
+            syndrome[3] <= syndrome[3] ^ antilog_out[3];
+            syndrome[4] <= syndrome[4] ^ antilog_out[4];
+            syndrome[5] <= syndrome[5] ^ antilog_out[5];
+            syndrome[6] <= syndrome[6] ^ antilog_out[6];
+            syndrome[7] <= syndrome[7] ^ antilog_out[7];
         end
     end
 end
@@ -834,7 +864,7 @@ always@(*)begin
             gf_cnt_y_n = 0;  
         end
         DE_MASKING_5:begin
-            state_n = CALCULATE_SYNDROME_2;
+            state_n = CALCULATE_SYNDROME_1;
             mask_raddr = 0;
             mask_n = 0;
             mask_cnt_n = 0;
@@ -867,11 +897,12 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
-            gf_cnt_n = gf_cnt - 1;
+            gf_cnt_n = gf_cnt;
             gf_cnt_y_n = 0;
         end
         CALCULATE_SYNDROME_2:begin
-            state_n = (gf_cnt_y == 7) ? (gf_cnt == 0)? SOLVE_EQUATION :CALCULATE_SYNDROME_1: CALCULATE_SYNDROME_2;
+            //state_n = CALCULATE_SYNDROME_3;
+            state_n = (gf_cnt == 0) ? SOLVE_EQUATION : CALCULATE_SYNDROME_1;
             mask_raddr = 0;
             mask_n = 0;
             mask_cnt_n = 0;
@@ -880,9 +911,10 @@ always@(*)begin
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
-            gf_cnt_n =  gf_cnt;
-            gf_cnt_y_n = gf_cnt_y + 1;
+            gf_cnt_n =  gf_cnt-1;
+            gf_cnt_y_n = gf_cnt_y;
         end
+
         SOLVE_EQUATION:begin
             state_n = (finish_sys == 1)? FIND_ERROR_POSITION : SOLVE_EQUATION;
             mask_raddr = 0;
