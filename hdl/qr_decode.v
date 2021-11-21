@@ -95,19 +95,6 @@ always@(posedge clk)begin
     tmp_mask_raddr <= mask_raddr;
 end
 
-//always@(*)begin
-//    case(state)
-//        DETECT_POSITION_AND_ROTATION:begin
-//            sram_raddr = pos_rot_sram_raddr;
-//        end
-//        FIND_MASK_PATTERN:begin
-//            sram_raddr = mask_raddr;
-//        end
-//        default:begin
-//            sram_raddr = mask_raddr;
-//        end
-//    endcase
-//end
 
 always@(*)begin
     sram_raddr = (pos_rot_finish == 0)? pos_rot_sram_raddr: tmp_mask_raddr;
@@ -132,8 +119,6 @@ reg [4:0] x_cnt_n;
 reg [4:0] y_cnt;
 reg [4:0] y_cnt_n;
 
-//wire [4:0] real_x_cnt;
-//wire [4:0] real_y_cnt;
 
 reg [4:0] real_x_cnt;
 reg [4:0] real_y_cnt;
@@ -165,8 +150,6 @@ wire [7:0] sigma_1, sigma_2, sigma_3, sigma_4;
 
 assign length = {c_correct[0][3:0],c_correct[1][7:4]};
 
-//assign real_x_cnt = (mode == 1) ? x_cnt : (mode == 2)? y_cnt : (mode == 3)? 24-x_cnt : 24-y_cnt; 
-//assign real_y_cnt = (mode == 1) ? y_cnt : (mode == 2)? 24-x_cnt : (mode == 3)? 24-y_cnt : x_cnt; 
 
 always@(*)begin
     case(mode)
@@ -241,8 +224,6 @@ assign c[42] = {code[250], code[274], code[275], code[299], code[300], code[324]
 assign c[43] = {code[327], code[301], code[302], code[276], code[277], code[251], code[252], code[226]};
 
 
-//wire [7:0] test_0 = c_correct[0];
-//wire [7:0] test_1 = c_correct[1];
 
 integer k;
 always@(*)begin
@@ -252,7 +233,6 @@ always@(*)begin
 end
 
 reg [7:0] syndrome [0:7];
-//reg [7:0] syndrome_n [0:7];
 wire [7:0] tmp_s;
 
 reg [7:0] ss [0:7];
@@ -278,8 +258,6 @@ always@(posedge clk)begin
             ss[5] <= ss[5] + 5;
             ss[6] <= ({1'b0,ss[6]} + 8'd6 >= 255)? ss[6] + 7 : ss[6] + 6;
             ss[7] <= ({1'b0,ss[7]} + 8'd7 >= 255)? ss[7] + 8 : ss[7] + 7;
-            //ss[6] <= ss_n[0];
-            //ss[7] <= ss_n[1];
         end
         else begin
             ss[0] <= ss[0];
@@ -297,7 +275,6 @@ wire [7:0] log_out;
 wire [7:0] antilog_out[0:7];
 wire [7:0] antilog_in[0:7];
 
-reg [2:0]  gf_cnt_y, gf_cnt_y_n;
 reg [7:0] log_out_2;
 
 always@(posedge clk)begin
@@ -306,7 +283,6 @@ end
 
 
 
-//add_gf add_u1(.in1(log_out),.in2(ss[gf_cnt_y]),.out(antilog_in));
 assign antilog_in[0] = ({1'b0,log_out_2} + {1'b0, ss[0]} >= 255)? log_out_2 + ss[0] + 1: log_out_2 + ss[0]; 
 assign antilog_in[1] = ({1'b0,log_out_2} + {1'b0, ss[1]} >= 255)? log_out_2 + ss[1] + 1: log_out_2 + ss[1]; 
 assign antilog_in[2] = ({1'b0,log_out_2} + {1'b0, ss[2]} >= 255)? log_out_2 + ss[2] + 1: log_out_2 + ss[2]; 
@@ -343,7 +319,6 @@ always@(posedge clk)begin
     end
     else begin
         if(state == CALCULATE_SYNDROME_2)begin
-            //syndrome[gf_cnt_y] <= syndrome[gf_cnt_y] ^ antilog_out;
             syndrome[0] <= syndrome[0] ^ antilog_out[0];
             syndrome[1] <= syndrome[1] ^ antilog_out[1];
             syndrome[2] <= syndrome[2] ^ antilog_out[2];
@@ -356,7 +331,6 @@ always@(posedge clk)begin
     end
 end
 
-//assign log_in = c[gf_cnt];
 
 wire enable_err_pos;
 assign enable_err_pos = finish_sys;
@@ -417,8 +391,8 @@ always@(posedge clk)begin
 end
 
 
-reg [1:0] fix_error_cnt;
-reg [1:0] fix_error_cnt_n;
+reg [2:0] fix_error_cnt;
+reg [2:0] fix_error_cnt_n;
 reg [7:0] anti_in_fix_error;
 wire [7:0] anti_out_fix_error;
 
@@ -453,22 +427,22 @@ always@(*)begin
         end
 
         case(fix_error_cnt)
-            0:begin
-                sigma_tmp = (error_count == 3) ? sigma_3 : sigma_4;
+            1:begin
+                sigma_tmp = (error_count == 4) ? sigma_4 : (error_count == 3) ? sigma_3 : (error_count == 2) ? sigma_2 : sigma_1;
                 anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i1} >= 255)? sigma_tmp+i1 +1 : sigma_tmp + i1;
                 offset_n[43-i1] =  anti_out_fix_error;
             end
-            1:begin
-                sigma_tmp = (error_count == 3) ? sigma_2 : sigma_3;
+            2:begin
+                sigma_tmp = (error_count == 4) ? sigma_3 : (error_count == 3) ? sigma_2 : sigma_1;
                 anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i2} >= 255)? sigma_tmp+i2 +1 : sigma_tmp + i2;
                 offset_n[43-i2] =  anti_out_fix_error;
             end
-            2:begin
-                sigma_tmp = (error_count == 3) ? sigma_1 : sigma_2;
+            3:begin
+                sigma_tmp = (error_count == 4) ? sigma_2 : sigma_1;
                 anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i3} >= 255)? sigma_tmp+i3 +1 : sigma_tmp + i3;
                 offset_n[43-i3] =  anti_out_fix_error;
             end
-            3:begin
+            4:begin
                 sigma_tmp = sigma_1;
                 anti_in_fix_error = ({1'b0, sigma_tmp} + {1'b0, i4} >= 255)? sigma_tmp+i4 +1 : sigma_tmp + i4;
                 offset_n[43-i4] =  anti_out_fix_error;
@@ -501,8 +475,6 @@ end
 
 reg [2:0] sys_cnt;
 reg [2:0] sys_cnt_n;
-wire mode_sys;
-assign mode_sys = (state == SOLVE_EQUATION_2)? (error_count == 3)? 1 : 0 :0;
 
 systolic sys1(
 .in1(in1_sys),
@@ -513,7 +485,7 @@ systolic sys1(
 .clk(clk),
 .srstn(srstn),
 .start(start_sys),
-.mode(mode_sys),
+.error_count(error_count),
 
 .sigma_1(sigma_1),
 .sigma_2(sigma_2),
@@ -694,7 +666,6 @@ always@(posedge clk)begin
     read_cnt <= read_cnt_n;
     out_cnt <= out_cnt_n;
     gf_cnt <= gf_cnt_n;
-    gf_cnt_y <= gf_cnt_y_n;
 end
 
 always@(*)begin
@@ -710,14 +681,11 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;
         end
         DETECT_POSITION_AND_ROTATION:begin
-            //state_n = (pos_rot_finish) ? FIND_MASK_PATTERN : DETECT_POSITION_AND_ROTATION;
             state_n = (pos_rot_finish) ? BLANK : DETECT_POSITION_AND_ROTATION;
             mask_raddr = (mode == 1 || mode == 4)? position+8*64+2 : position + 16*64+22;
             mask_n = 0;
-            //mask_cnt_n = 1;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 9;
@@ -725,13 +693,11 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;
         end
         BLANK:begin
             state_n = FIND_MASK_PATTERN;
             mask_raddr = (mode == 1 || mode == 4)? position+8*64+2 + 1 : position + 16*64+22 - 1 ;
             mask_n = 0;
-            //mask_cnt_n = 2;
             mask_cnt_n = 0;
             code_n = 0;
             x_cnt_n = 9;
@@ -739,23 +705,18 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;     
         end
         FIND_MASK_PATTERN:begin
-            //state_n = (mask_cnt == 2)? DE_MASKING_1 : FIND_MASK_PATTERN;
             state_n = (mask_cnt == 2)? BLANK2 : FIND_MASK_PATTERN;
-            //mask_raddr = (mask_cnt != 2) ? (mode == 1 || mode == 4)? position+8*64+2 + mask_cnt : position + 16*64+22 - mask_cnt : position + 64*real_y_cnt + real_x_cnt ;
             mask_raddr = (mask_cnt != 2) ? (mode == 1 || mode == 4)? position+8*64+2 + 2 : position + 16*64+22 - 2 : position + 64*real_y_cnt + real_x_cnt ;
             mask_n = sram_rdata_new;
             mask_cnt_n = mask_cnt + 1;
             code_n = 0;
-            //x_cnt_n = 9;
             x_cnt_n = (mask_cnt == 2)? 10 : 9;
             y_cnt_n = 0;
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;
         end
         BLANK2:begin
             state_n = DE_MASKING_1;
@@ -768,7 +729,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;
         end
         DE_MASKING_1:begin    
             state_n = (x_cnt == 16 && y_cnt == 8)? DE_MASKING_2 :DE_MASKING_1;
@@ -791,7 +751,6 @@ always@(*)begin
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;
         end
         DE_MASKING_2:begin
             state_n = (x_cnt == 24 &&  y_cnt == 16)? DE_MASKING_3 : DE_MASKING_2;
@@ -814,7 +773,6 @@ always@(*)begin
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;
         end
         DE_MASKING_3:begin
             //state_n = (x_cnt == 24 && y_cnt == 24)? CALCULATE_SYNDROME_2 : DE_MASKING_3;
@@ -838,7 +796,6 @@ always@(*)begin
             read_cnt_n = read_cnt + 1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;
         end
         DE_MASKING_4:begin
             state_n = DE_MASKING_5;
@@ -861,7 +818,6 @@ always@(*)begin
             read_cnt_n = read_cnt+1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;  
         end
         DE_MASKING_5:begin
             state_n = CALCULATE_SYNDROME_1;
@@ -884,7 +840,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 43;
-            gf_cnt_y_n = 0;  
         end
 
         CALCULATE_SYNDROME_1:begin
@@ -898,10 +853,8 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = gf_cnt;
-            gf_cnt_y_n = 0;
         end
         CALCULATE_SYNDROME_2:begin
-            //state_n = CALCULATE_SYNDROME_3;
             state_n = (gf_cnt == 0) ? SOLVE_EQUATION : CALCULATE_SYNDROME_1;
             mask_raddr = 0;
             mask_n = 0;
@@ -912,7 +865,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n =  gf_cnt-1;
-            gf_cnt_y_n = gf_cnt_y;
         end
 
         SOLVE_EQUATION:begin
@@ -926,7 +878,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n =  0;
-            gf_cnt_y_n = 0;
         end
         FIND_ERROR_POSITION:begin
             state_n = (finish_err_pos)? SOLVE_EQUATION_2 : FIND_ERROR_POSITION;
@@ -939,7 +890,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n =  0;
-            gf_cnt_y_n = 0;
         end
         SOLVE_EQUATION_2:begin
             state_n = (finish_sys)? FIX_ERROR : SOLVE_EQUATION_2;
@@ -952,10 +902,9 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n =  0;
-            gf_cnt_y_n = 0;
         end
         FIX_ERROR : begin
-            state_n = (fix_error_cnt == error_count - 1)? OUTPUT : FIX_ERROR;
+            state_n = (fix_error_cnt == error_count)? OUTPUT : FIX_ERROR;
             mask_raddr = 0;
             mask_n = 0;
             mask_cnt_n = 0;
@@ -965,7 +914,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n =  0;
-            gf_cnt_y_n = 0;    
         end
         OUTPUT:begin
             state_n = (out_cnt == length-1)? FINISH : OUTPUT;
@@ -978,7 +926,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = out_cnt + 1;
             gf_cnt_n = 0;
-            gf_cnt_y_n = 0;    
         end
         FINISH:begin
             state_n = FINISH;
@@ -991,7 +938,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 0;
-            gf_cnt_y_n = 0;    
         end
         default:begin
             state_n = 0;
@@ -1004,7 +950,6 @@ always@(*)begin
             read_cnt_n = 0;
             out_cnt_n = 0;
             gf_cnt_n = 0;
-            gf_cnt_y_n = 0;    
         end
     endcase
 end
@@ -1072,11 +1017,9 @@ reg [3:0] real_state_n;
 
 always@(posedge clk)begin
     if(~srstn)begin
-        //state <= IDLE;
         real_state <= IDLE;
     end
     else begin
-        //state <= state_n;
         real_state <= real_state_n;
     end
 end
@@ -1156,121 +1099,116 @@ always@(*)begin
             check_pattern_times_n = check_pattern_times;
             position_n = position;
             min_col_n = min_col;
-            //x_n = (state != FIND_POSITION)? x + 1 : x-1;
             x_n = x+1;
             y_n = y;
         end
         CHECK_ROW_19:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_19 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_29 : CHECK_ROW_19 : CHECK_ROW_9;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_19 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? CHECK_ROW_29 : CHECK_ROW_19 : CHECK_ROW_9;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            //min_col_n = (sram_rdata == 1) ? x-1 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 29:19:9;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 29:19:9;
         end
         CHECK_ROW_29:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_29 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_34 : CHECK_ROW_29 : CHECK_ROW_24;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_29 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? CHECK_ROW_34 : CHECK_ROW_29 : CHECK_ROW_24;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            //min_col_n = (sram_rdata == 1) ? x-1 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0 : x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 34:29:24;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0 : x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 34:29:24;
         end
 
         CHECK_ROW_9:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_9 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_14 : CHECK_ROW_9 : CHECK_ROW_4;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_9 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? CHECK_ROW_14 : CHECK_ROW_9 : CHECK_ROW_4;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0; 
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            //min_col_n = (sram_rdata == 1) ? x-1 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 14:9:4;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 14:9:4;
         end
 
         CHECK_ROW_34:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_34 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? CHECK_ROW_38 : CHECK_ROW_34 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_34 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? CHECK_ROW_38 : CHECK_ROW_34 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0 : x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 38:34:30;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0 : x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 38:34:30;
 
         end
         CHECK_ROW_38:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_38 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_38 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_38 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? FIND_FIRST_1_CODE : CHECK_ROW_38 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            //min_col_n = (sram_rdata == 1) ? (x>5)? x-5 : 0 : min_col;
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 39:38:35;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 39:38:35;
 
         end
         CHECK_ROW_24:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_24 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_24 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_24 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? FIND_FIRST_1_CODE : CHECK_ROW_24 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 25:24:20;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 25:24:20;
         end
         CHECK_ROW_14:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_14 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_14 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_14 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? FIND_FIRST_1_CODE : CHECK_ROW_14 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 15:14:10;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 15:14:10;
         end
         CHECK_ROW_4:begin
-            real_state_n = (sram_rdata == 0) ? (x == 45) ? BLANK : CHECK_ROW_4 : BLANK;
-            state_n = (sram_rdata == 0)?(x == 45)? FIND_FIRST_1_CODE : CHECK_ROW_4 : FIND_FIRST_1_CODE;
+            real_state_n = (sram_rdata == 0) ? (x == 62) ? BLANK : CHECK_ROW_4 : BLANK;
+            state_n = (sram_rdata == 0)?(x == 62)? FIND_FIRST_1_CODE : CHECK_ROW_4 : FIND_FIRST_1_CODE;
             x_cnt_n = 0;
             y_cnt_n = 0;
             buffer_n = 0;
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = 0;
-            min_col_n = (sram_rdata == 1) ? (x>6)? x-6 : 0 : min_col;
-            x_n = (sram_rdata == 0)?(x==45)? 0:x+1:min_col;
-            y_n = (sram_rdata == 0)?(x==45)? 5:4:0;
+            min_col_n = (sram_rdata == 1) ? (x>24)? x-24 : 0 : min_col;
+            x_n = (sram_rdata == 0)?(x==62)? 0:x+1:min_col;
+            y_n = (sram_rdata == 0)?(x==62)? 5:4:0;
         end
         FIND_FIRST_1_CODE:begin
             real_state_n = (sram_rdata == 1) ? BLANK : (x == 40)? BLANK :FIND_FIRST_1_CODE;
@@ -1281,9 +1219,7 @@ always@(*)begin
             mode_n = 0;
             check_pattern_times_n = 0;
             position_n = sram_raddr-1;
-            //position_n = sram_raddr-1;
             min_col_n = min_col;
-            //x_n = (sram_rdata != 1)?(x == 40)? min_col : x + 1: x + 24;
             x_n = (sram_rdata != 1)?(x == 40)? min_col : x + 1: x + 23;
             y_n = (sram_rdata != 1)?(x == 40)? y+1 : y :y;
         end
@@ -1298,7 +1234,6 @@ always@(*)begin
             position_n = position;
             min_col_n = min_col;
             x_n = (sram_rdata == 0) ? x-1 : x-25;
-            //x_n = (sram_rdata == 0) ? x-2 : x-25;
             y_n = y;
         end
         IDENTIFY_POSITION_DETECTION_PATTERN:begin
@@ -1311,7 +1246,6 @@ always@(*)begin
             check_pattern_times_n = check_pattern_times;
             position_n = position;
             min_col_n = min_col;
-            //x_n = (x_cnt == 6)? x-6 :x+1;
             x_n = (x_cnt == 6)? x-7 :x+1;
             y_n = (x_cnt == 6)? y+1 :y; 
         
@@ -1423,7 +1357,7 @@ input [7:0] in5,
 input clk,
 input start,
 input srstn,
-input mode,
+input [2:0] error_count,
 
 output reg [7:0] sigma_1,
 output reg [7:0] sigma_2,
@@ -1498,10 +1432,10 @@ wire [7:0] log_new_out, anti_new_out;
 
 wire finish_n;
 
-reg [7:0] in1_delay [0:3];
-reg [7:0] in2_delay [0:3];
+reg [7:0] in1_delay [0:9];
+reg [7:0] in2_delay [0:7];
 reg [7:0] in3_delay [0:3];
-reg [7:0] in5_delay [0:2];
+reg [7:0] in5_delay [0:6];
 
 
 circle p11 (.clk(clk),.in(in1_new),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
@@ -1525,26 +1459,31 @@ always@(posedge clk)begin
     end
 end
 
+integer i; 
 
 always@(posedge clk)begin
+    for( i = 9 ; i >= 1 ; i = i - 1)begin
+        in1_delay[i] <= in1_delay[i-1];
+    end
+    
+    for( i = 7 ; i >= 1 ; i = i - 1)begin
+        in2_delay[i] <= in2_delay[i-1];
+    end
+    
+    for( i = 3 ; i >= 1 ; i = i - 1)begin
+        in3_delay[i] <= in3_delay[i-1];
+    end
+
+    for( i = 6 ; i >= 1 ; i = i - 1)begin
+        in5_delay[i] <= in5_delay[i-1];
+    end
+
+    
+    
     in1_delay[0] <= in1; 
     in2_delay[0] <= in2; 
     in3_delay[0] <= in3; 
     in5_delay[0] <= in5;
-
-    in1_delay[1] <= in1_delay[0];
-    in2_delay[1] <= in2_delay[0];
-    in3_delay[1] <= in3_delay[0];
-    in5_delay[1] <= in5_delay[0];
-
-    in1_delay[2] <= in1_delay[1];
-    in2_delay[2] <= in2_delay[1];
-    in3_delay[2] <= in3_delay[1];
-    in5_delay[2] <= in5_delay[1];
-
-    in1_delay[3] <= in1_delay[2];
-    in2_delay[3] <= in2_delay[2];
-    in3_delay[3] <= in3_delay[2];
 
 end
 
@@ -1569,18 +1508,32 @@ always@(posedge clk)begin
 end
 
 always@(*)begin
-    if(mode == 0)begin
-        in1_new = (cnt <= 3)?in1 : (cnt <= 6)? w_p12_p21_delay[1] : w_p12_p21_delay[0];
-        in2_new = (cnt <= 4)?in2 : (cnt <= 7)? w_p13_p22_delay[1] : w_p13_p22_delay[0];
-        in3_new = (cnt <= 5)?in3 : (cnt <= 8)? w_p14_p23_delay[1] : w_p14_p23_delay[0];
-        in4_new = (cnt <= 6)?in4 : w_p15_p24_delay[1];
-        in5_new = in5;
-    end
-    else begin
+    if (error_count == 3)begin
         in1_new = (cnt <= 6)? in1_delay[3] : w_p12_p21_delay[0];
         in2_new = (cnt <= 7)? in2_delay[3] : w_p13_p22_delay[0];
         in3_new = (cnt <= 8)? in3_delay[3] : w_p14_p23_delay[0];
         in4_new = in5_delay[2];
+        in5_new = in5;
+    end
+    else if (error_count == 2)begin
+        in1_new = (cnt <= 8)? in1_delay[7] : w_p12_p21_delay[0];
+        in2_new = (cnt <= 9)? in2_delay[7] : w_p13_p22_delay[0];
+        in3_new = in5_delay[5];
+        in4_new = in5_delay[2];
+        in5_new = in5;
+    end
+    else if (error_count == 1)begin
+        in1_new = (cnt <= 10)? in1_delay[9] : w_p12_p21_delay[0];
+        in2_new = in5_delay[6];
+        in3_new = in5_delay[5];
+        in4_new = in5_delay[2];
+        in5_new = in5;
+    end
+    else begin
+        in1_new = (cnt <= 3)?in1 : (cnt <= 6)? w_p12_p21_delay[1] : w_p12_p21_delay[0];
+        in2_new = (cnt <= 4)?in2 : (cnt <= 7)? w_p13_p22_delay[1] : w_p13_p22_delay[0];
+        in3_new = (cnt <= 5)?in3 : (cnt <= 8)? w_p14_p23_delay[1] : w_p14_p23_delay[0];
+        in4_new = (cnt <= 6)?in4 : w_p15_p24_delay[1];
         in5_new = in5;
     end
 end
@@ -1693,353 +1646,6 @@ assign finish_n = (cnt == 24)?1:0;
 
 
 endmodule
-
-
-//module systolic(
-//input [7:0] in1,
-//input [7:0] in2,
-//input [7:0] in3,
-//input [7:0] in4,
-//input [7:0] in5,
-//input clk,
-//input start,
-//input srstn,
-//input mode,
-//
-//output reg [7:0] sigma_1,
-//output reg [7:0] sigma_2,
-//output reg [7:0] sigma_3,
-//output reg [7:0] sigma_4,
-//output reg finish
-//
-//);
-//wire finish_n;
-//
-//wire[7:0] w_p11_p12; 
-//wire[7:0] w_p12_p13; 
-//wire[7:0] w_p13_p14; 
-//wire[7:0] w_p14_p15; 
-//wire[7:0] w_p15_p16; 
-//
-//wire[7:0] w_p21_p22;
-//wire[7:0] w_p22_p23;
-//wire[7:0] w_p23_p24;
-//wire[7:0] w_p24_p25;
-//
-//wire[7:0] w_p31_p32;
-//wire[7:0] w_p32_p33;
-//wire[7:0] w_p33_p34;
-//
-//wire[7:0] w_p41_p42;
-//wire[7:0] w_p42_p43;
-//
-//wire s_p11_p12;
-//wire s_p12_p13;
-//wire s_p13_p14;
-//wire s_p14_p15;
-//wire s_p15_p16;
-//
-//wire s_p21_p22;
-//wire s_p22_p23;
-//wire s_p23_p24;
-//wire s_p24_p25;
-//
-//wire s_p31_p32;
-//wire s_p32_p33;
-//wire s_p33_p34;
-//
-//wire s_p41_p42;
-//wire s_p42_p43;
-//
-//wire[7:0] w_p12_p21;
-//wire[7:0] w_p13_p22;
-//wire[7:0] w_p14_p23;
-//wire[7:0] w_p15_p24;
-//
-//wire[7:0] w_p22_p31; 
-//wire[7:0] w_p23_p32; 
-//wire[7:0] w_p24_p33; 
-//
-//wire[7:0] w_p32_p41; 
-//wire[7:0] w_p33_p42; 
-//
-//wire[7:0] w_p42_p51; 
-//
-//wire[7:0] in_g_p11;
-//wire[7:0] in_g_p12;
-//wire[7:0] in_g_p13;
-//wire[7:0] in_g_p14;
-//wire[7:0] in_g_p15;
-//
-//wire[7:0] in_g_p21;
-//wire[7:0] in_g_p22;
-//wire[7:0] in_g_p23;
-//wire[7:0] in_g_p24;
-//
-//wire[7:0] in_g_p31;
-//wire[7:0] in_g_p32;
-//wire[7:0] in_g_p33;
-//
-//wire[7:0] in_g_p41;
-//wire[7:0] in_g_p42;
-//
-//wire [7:0] w_p12_p21_tmp;
-//wire [7:0] w_p13_p22_tmp;
-//wire [7:0] w_p14_p23_tmp;
-//wire [7:0] w_p15_p24_tmp;
-//
-////circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
-////rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21),.in_g(in_g_p12));
-////rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22),.in_g(in_g_p13));
-////rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23),.in_g(in_g_p14));
-////rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24),.in_g(in_g_p15));
-//
-//circle p11 (.clk(clk),.in(in1),.out(w_p11_p12),.sign(s_p11_p12),.in_g(in_g_p11));
-//rect   p12 (.clk(clk),.in(in2),.in_c(w_p11_p12),.in_sign(s_p11_p12),.out_c(w_p12_p13),.out_sign(s_p12_p13),.out(w_p12_p21_tmp),.in_g(in_g_p12));
-//rect   p13 (.clk(clk),.in(in3),.in_c(w_p12_p13),.in_sign(s_p12_p13),.out_c(w_p13_p14),.out_sign(s_p13_p14),.out(w_p13_p22_tmp),.in_g(in_g_p13));
-//rect   p14 (.clk(clk),.in(in4),.in_c(w_p13_p14),.in_sign(s_p13_p14),.out_c(w_p14_p15),.out_sign(s_p14_p15),.out(w_p14_p23_tmp),.in_g(in_g_p14));
-//rect   p15 (.clk(clk),.in(in5),.in_c(w_p14_p15),.in_sign(s_p14_p15),.out_c(w_p15_p16),.out_sign(s_p15_p16),.out(w_p15_p24_tmp),.in_g(in_g_p15));
-//
-//
-//
-//
-//reg [7:0] in1_d1, in1_d2;
-//reg [7:0] in2_d1, in2_d2;
-//reg [7:0] in3_d1, in3_d2;
-//reg [7:0] in5_d1;
-//
-//always@(posedge clk)begin
-//    in1_d1 <= in1;
-//    in1_d2 <= in1_d1;
-//    
-//    in2_d1 <= in2;
-//    in2_d2 <= in2_d1;
-//    
-//    in3_d1 <= in3;
-//    in3_d2 <= in3_d1;
-//    
-//    in5_d1 <= in5;
-//end
-//
-//assign w_p12_p21 = (mode == 0) ? w_p12_p21_tmp : in1_d2;
-//assign w_p13_p22 = (mode == 0) ? w_p13_p22_tmp : in2_d2;
-//assign w_p14_p23 = (mode == 0) ? w_p14_p23_tmp : in3_d2;
-//assign w_p15_p24 = (mode == 0) ? w_p15_p24_tmp : in5_d1;
-//
-//circle p21 (.clk(clk),.in(w_p12_p21),.out(w_p21_p22),.sign(s_p21_p22),.in_g(in_g_p21));
-//rect   p22 (.clk(clk),.in(w_p13_p22),.in_c(w_p21_p22),.in_sign(s_p21_p22),.out_c(w_p22_p23),.out_sign(s_p22_p23),.out(w_p22_p31),.in_g(in_g_p22));
-//rect   p23 (.clk(clk),.in(w_p14_p23),.in_c(w_p22_p23),.in_sign(s_p22_p23),.out_c(w_p23_p24),.out_sign(s_p23_p24),.out(w_p23_p32),.in_g(in_g_p23));
-//rect   p24 (.clk(clk),.in(w_p15_p24),.in_c(w_p23_p24),.in_sign(s_p23_p24),.out_c(w_p24_p25),.out_sign(s_p24_p25),.out(w_p24_p33),.in_g(in_g_p24));
-//
-//circle p31 (.clk(clk),.in(w_p22_p31),.out(w_p31_p32),.sign(s_p31_p32),.in_g(in_g_p31));
-//rect   p32 (.clk(clk),.in(w_p23_p32),.in_c(w_p31_p32),.in_sign(s_p31_p32),.out_c(w_p32_p33),.out_sign(s_p32_p33),.out(w_p32_p41),.in_g(in_g_p32));
-//rect   p33 (.clk(clk),.in(w_p24_p33),.in_c(w_p32_p33),.in_sign(s_p32_p33),.out_c(w_p33_p34),.out_sign(s_p33_p34),.out(w_p33_p42),.in_g(in_g_p33));
-//
-//
-//circle p41 (.clk(clk),.in(w_p32_p41),.out(w_p41_p42),.sign(s_p41_p42),.in_g(in_g_p41));
-//rect   p42 (.clk(clk),.in(w_p33_p42),.in_c(w_p41_p42),.in_sign(s_p41_p42),.out_c(w_p42_p43),.out_sign(s_p42_p43),.out(w_p42_p51),.in_g(in_g_p42));
-//
-//reg [4:0] cnt;
-//
-//always@(posedge clk)begin
-//    if(~srstn)begin
-//        cnt <= 0;
-//    end
-//    else begin
-//        if(start)begin
-//            cnt <= cnt + 1;
-//        end
-//        else begin
-//            cnt <= 0;
-//        end
-//
-//    end
-//end
-//
-//reg [7:0] sigma_1_n, sigma_2_n, sigma_3_n, sigma_4_n;
-//
-//
-//
-//reg [7:0] in_g_p41_delay1;
-//
-//reg [7:0] in_g_p32_delay1;
-//reg [7:0] in_g_p32_delay2;
-//reg [7:0] w_p24_p33_delay1;
-//reg [7:0] in_g_p31_delay1;
-//reg [7:0] in_g_p31_delay2;
-//reg [7:0] in_g_p31_delay3;
-//
-//reg [7:0] log_u1_in;
-//wire [7:0] log_u1_out;
-//reg [7:0] anti_u1_in;
-//wire [7:0] anti_u1_out;
-//
-//log logu1(.in(log_u1_in),.out(log_u1_out));
-//antilog antiu1(.in(anti_u1_in),.out(anti_u1_out));
-//
-//reg [7:0] log_u2_in;
-//wire [7:0] log_u2_out;
-//reg [7:0] anti_u2_in;
-//wire [7:0] anti_u2_out;
-//reg [7:0] anti_u3_in;
-//wire [7:0] anti_u3_out;
-//
-//log logu2(.in(log_u2_in),.out(log_u2_out));
-//antilog antiu2(.in(anti_u2_in),.out(anti_u2_out));
-//antilog antiu3(.in(anti_u3_in),.out(anti_u3_out));
-//
-//reg [7:0] w_p15_p24_delay1;
-//reg [7:0] w_p15_p24_delay2;
-//reg [7:0] in_g_p23_delay1;
-//reg [7:0] in_g_p23_delay2;
-//reg [7:0] in_g_p23_delay3;
-//reg [7:0] in_g_p22_delay1;
-//reg [7:0] in_g_p22_delay2;
-//reg [7:0] in_g_p22_delay3;
-//reg [7:0] in_g_p22_delay4;
-//reg [7:0] in_g_p21_delay1;
-//reg [7:0] in_g_p21_delay2;
-//reg [7:0] in_g_p21_delay3;
-//reg [7:0] in_g_p21_delay4;
-//reg [7:0] in_g_p21_delay5;
-//
-//
-//reg [7:0] log_u3_in;
-//wire [7:0] log_u3_out;
-//reg [7:0] anti_u4_in;
-//wire [7:0] anti_u4_out;
-//reg [7:0] anti_u5_in;
-//wire [7:0] anti_u5_out;
-//reg [7:0] anti_u6_in;
-//wire [7:0] anti_u6_out;
-//
-//log logu3(.in(log_u3_in),.out(log_u3_out));
-//antilog antiu4(.in(anti_u4_in),.out(anti_u4_out));
-//antilog antiu5(.in(anti_u5_in),.out(anti_u5_out));
-//antilog antiu6(.in(anti_u6_in),.out(anti_u6_out));
-//
-//
-//reg [7:0] in5_delay1;
-//reg [7:0] in5_delay2;
-//reg [7:0] in5_delay3;
-//reg [7:0] in_g_p14_delay1;
-//reg [7:0] in_g_p14_delay2;
-//reg [7:0] in_g_p14_delay3;
-//reg [7:0] in_g_p14_delay4;
-//reg [7:0] in_g_p13_delay1;
-//reg [7:0] in_g_p13_delay2;
-//reg [7:0] in_g_p13_delay3;
-//reg [7:0] in_g_p13_delay4;
-//reg [7:0] in_g_p13_delay5;
-//reg [7:0] in_g_p12_delay1;
-//reg [7:0] in_g_p12_delay2;
-//reg [7:0] in_g_p12_delay3;
-//reg [7:0] in_g_p12_delay4;
-//reg [7:0] in_g_p12_delay5;
-//reg [7:0] in_g_p12_delay6;
-//reg [7:0] in_g_p11_delay1;
-//reg [7:0] in_g_p11_delay2;
-//reg [7:0] in_g_p11_delay3;
-//reg [7:0] in_g_p11_delay4;
-//reg [7:0] in_g_p11_delay5;
-//reg [7:0] in_g_p11_delay6;
-//reg [7:0] in_g_p11_delay7;
-//
-//
-//always@(posedge clk)begin
-//    in_g_p41_delay1 <= in_g_p41;
-//    
-//    in_g_p32_delay1 <= in_g_p32;
-//    in_g_p32_delay2 <= in_g_p32_delay1;
-//    w_p24_p33_delay1 <= w_p24_p33;
-//    in_g_p31_delay1 <= in_g_p31;
-//    in_g_p31_delay2 <= in_g_p31_delay1;
-//    in_g_p31_delay3 <= in_g_p31_delay2;
-//
-//    w_p15_p24_delay1 <= w_p15_p24;
-//    w_p15_p24_delay2 <= w_p15_p24_delay1;
-//    in_g_p23_delay1 <= in_g_p23;
-//    in_g_p23_delay2 <= in_g_p23_delay1;
-//    in_g_p23_delay3 <= in_g_p23_delay2;
-//    in_g_p22_delay1 <= in_g_p22;
-//    in_g_p22_delay2 <= in_g_p22_delay1;
-//    in_g_p22_delay3 <= in_g_p22_delay2;
-//    in_g_p22_delay4 <= in_g_p22_delay3;
-//    in_g_p21_delay1 <= in_g_p21;
-//    in_g_p21_delay2 <= in_g_p21_delay1;
-//    in_g_p21_delay3 <= in_g_p21_delay2;
-//    in_g_p21_delay4 <= in_g_p21_delay3;
-//    in_g_p21_delay5 <= in_g_p21_delay4;
-//
-//   // in5_delay1 <= in5;
-//    in5_delay1 <= (mode == 0) ? in5 : in5_d1;
-//    in5_delay2 <= in5_delay1;
-//    in5_delay3 <= in5_delay2;
-//    in_g_p14_delay1 <= in_g_p14;
-//    in_g_p14_delay2 <= in_g_p14_delay1;
-//    in_g_p14_delay3 <= in_g_p14_delay2;
-//    in_g_p14_delay4 <= in_g_p14_delay3;
-//    in_g_p13_delay1 <= in_g_p13;
-//    in_g_p13_delay2 <= in_g_p13_delay1;
-//    in_g_p13_delay3 <= in_g_p13_delay2;
-//    in_g_p13_delay4 <= in_g_p13_delay3;
-//    in_g_p13_delay5 <= in_g_p13_delay4;
-//    in_g_p12_delay1 <= in_g_p12;
-//    in_g_p12_delay2 <= in_g_p12_delay1;
-//    in_g_p12_delay3 <= in_g_p12_delay2;
-//    in_g_p12_delay4 <= in_g_p12_delay3;
-//    in_g_p12_delay5 <= in_g_p12_delay4;
-//    in_g_p12_delay6 <= in_g_p12_delay5;
-//    in_g_p11_delay1 <= in_g_p11;
-//    in_g_p11_delay2 <= in_g_p11_delay1;
-//    in_g_p11_delay3 <= in_g_p11_delay2;
-//    in_g_p11_delay4 <= in_g_p11_delay3;
-//    in_g_p11_delay5 <= in_g_p11_delay4;
-//    in_g_p11_delay6 <= in_g_p11_delay5;
-//    in_g_p11_delay7 <= in_g_p11_delay6;
-//
-//end
-//
-//always@(posedge clk)begin
-//    sigma_1 <= sigma_1_n;
-//    sigma_2 <= sigma_2_n;
-//    sigma_3 <= sigma_3_n;
-//    sigma_4 <= sigma_4_n;
-//    finish <= finish_n;
-//end
-//
-//always@(*)begin
-//    sigma_1_n = (cnt == 7)? (in_g_p42 >= in_g_p41_delay1)? in_g_p42 - in_g_p41_delay1 : in_g_p42 - in_g_p41_delay1 - 1 : sigma_1;
-//end
-//
-//always@(*)begin
-//    anti_u1_in = ({1'b0,sigma_1} + {1'b0,in_g_p32_delay2} >= 255)? sigma_1 + in_g_p32_delay2 + 1 : sigma_1 + in_g_p32_delay2;
-//    log_u1_in = anti_u1_out ^ w_p24_p33_delay1;
-//    sigma_2_n = (cnt == 8)? (log_u1_out >= in_g_p31_delay3)? log_u1_out - in_g_p31_delay3 : log_u1_out - in_g_p31_delay3-1 : sigma_2;
-//end
-//
-//always@(*)begin
-//    anti_u2_in = ({1'b0,sigma_1} + {1'b0,in_g_p23_delay3} >= 255)? sigma_1 + in_g_p23_delay3 + 1 : sigma_1 + in_g_p23_delay3;
-//    anti_u3_in = ({1'b0,sigma_2} + {1'b0,in_g_p22_delay4} >= 255)? sigma_2 + in_g_p22_delay4 + 1 : sigma_2 + in_g_p22_delay4;
-//    log_u2_in = anti_u2_out ^ anti_u3_out ^ w_p15_p24_delay2;
-//    sigma_3_n = (cnt == 9)? (log_u2_out >= in_g_p21_delay5)? log_u2_out - in_g_p21_delay5 : log_u2_out - in_g_p21_delay5-1 : sigma_3;
-//end
-//
-//always@(*)begin
-//    anti_u4_in = ({1'b0,sigma_1} + {1'b0,in_g_p14_delay4} >= 255)? sigma_1 + in_g_p14_delay4 + 1 : sigma_1 + in_g_p14_delay4;
-//    anti_u5_in = ({1'b0,sigma_2} + {1'b0,in_g_p13_delay5} >= 255)? sigma_2 + in_g_p13_delay5 + 1 : sigma_2 + in_g_p13_delay5;
-//    anti_u6_in = ({1'b0,sigma_3} + {1'b0,in_g_p12_delay6} >= 255)? sigma_3 + in_g_p12_delay6 + 1 : sigma_3 + in_g_p12_delay6;
-//    log_u3_in = anti_u4_out ^ anti_u5_out ^ anti_u6_out ^ in5_delay3;
-//    sigma_4_n = (cnt == 10)? (log_u3_out >= in_g_p11_delay7)? log_u3_out - in_g_p11_delay7 : log_u3_out - in_g_p11_delay7-1 : sigma_4;
-//    
-//end
-//
-//
-//assign finish_n = (cnt == 10)?1:0;
-//
-//
-//endmodule
-
 
 
 module rect(
