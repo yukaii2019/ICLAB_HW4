@@ -827,7 +827,7 @@ always@(*)begin
             endcase
             x_cnt_n = 0;
             y_cnt_n = 0;
-            read_cnt_n = 0;
+            read_cnt_n = read_cnt+1;
             out_cnt_n = 0;
             gf_cnt_n = 43;
             gf_cnt_y_n = 0;  
